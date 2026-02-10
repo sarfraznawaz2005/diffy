@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Diffy.App.ViewModels"
+             xmlns:models="clr-namespace:Diffy.Core.Models;assembly=Diffy.Core"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="Diffy.App.Views.HistoryView"
+             x:DataType="vm:RepositoryTabViewModel">
+
+    <UserControl.Styles>
+        <!-- Override for Actions column cells -->
+        <Style Selector="DataGridCell.ActionCell">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto, *, Auto">
+        <!-- Search Bar -->
+        <Border Grid.Row="0" 
+                Background="{DynamicResource SurfaceBackgroundAlternative}" 
+                BorderBrush="{DynamicResource BorderBrush}" 
+                BorderThickness="0,0,0,1"
+                Height="40">
+            <Grid ColumnDefinitions="*, Auto">
+                <TextBox Grid.Column="0" 
+                         Text="{Binding History.SearchQuery}" 
+                         Watermark="Search commits (hash, message, author)..."
+                         Classes="Subtle"
+                         Margin="8,4"
+                         VerticalAlignment="Center"
+                         BorderThickness="0"
+                         Background="Transparent"/>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,0,8,0">
+                    <TextBlock Text="{Binding History.FilteredCommits.Count, StringFormat='{}{0} Commits'}" 
+                               VerticalAlignment="Center"
+                               FontSize="11" 
+                               Foreground="{DynamicResource TextSecondary}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- History DataGrid -->
+        <DataGrid Grid.Row="1" 
+                  ItemsSource="{Binding History.FilteredCommits}"
+                  SelectedItem="{Binding History.SelectedCommit}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All"
+                  BorderThickness="0"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  SelectionMode="Single"
+                  RowHeight="36"
+                  Background="Transparent">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Hash" Binding="{Binding Hash}" Width="SizeToCells" />
+                <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="SizeToCells" />
+                <DataGridTextColumn Header="Author" Binding="{Binding AuthorName}" Width="SizeToCells" />
+                <DataGridTemplateColumn Header="Message" Width="*" MinWidth="200">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="models:CommitInfo">
+                            <Grid VerticalAlignment="Stretch">
+                                <TextBlock Text="{Binding Message}" 
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="12,0,12,0"/>
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Actions" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="models:CommitInfo">
+                            <Border HorizontalAlignment="Stretch" Background="Transparent" Padding="12,0,12,0">
+                                <Button Classes="DialogButton" 
+                                        Command="{Binding $parent[UserControl].((vm:RepositoryTabViewModel)DataContext).History.ViewCommitFilesCommand}"
+                                        CommandParameter="{Binding}"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Padding="8,4"
+                                        Margin="0">
+                                    <TextBlock Text="View Files" FontSize="11" FontWeight="SemiBold"/>
+                                </Button>
+                            </Border>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Load More Section -->
+        <Border Grid.Row="2" 
+                IsVisible="{Binding History.CanLoadMoreCommits}"
+                Background="{DynamicResource SurfaceBackgroundAlternative}" 
+                BorderBrush="{DynamicResource BorderBrush}" 
+                BorderThickness="0,1,0,0"
+                Padding="8">
+            <Button Command="{Binding History.LoadMoreCommitsCommand}"
+                    HorizontalAlignment="Center"
+                    Classes="DialogButton">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <ProgressBar IsIndeterminate="True" 
+                                 Width="16" Height="16" 
+                                 IsVisible="{Binding History.IsLoading}"/>
+                    <TextBlock Text="Load More Commits" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Button>
+        </Border>
+    </Grid>
+</UserControl>

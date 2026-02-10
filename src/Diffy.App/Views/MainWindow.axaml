@@ -1,0 +1,289 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Diffy.App.ViewModels"
+        xmlns:views="using:Diffy.App.Views"
+        xmlns:converters="using:Diffy.App.Converters"
+        xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+        x:Class="Diffy.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        x:Name="RootWindow"
+        Title="Diffy - Git Repository Watcher"
+        Icon="/Assets/Icons/icon.png"
+        MinWidth="800" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="PreferSystemChrome">
+
+    <Window.KeyBindings>
+        <!-- F-keys don't need platform-specific modifiers -->
+        <KeyBinding Gesture="F5" Command="{Binding RefreshCurrentTabCommand}"/>
+        <KeyBinding Gesture="F7" Command="{Binding JumpToNextChangeCommand}"/>
+        <KeyBinding Gesture="Shift+F7" Command="{Binding JumpToPreviousChangeCommand}"/>
+        <!-- Ctrl+O is added programmatically in code-behind to use Cmd+ on macOS -->
+    </Window.KeyBindings>
+
+    <Window.Resources>
+        <converters:StatusToColorConverter x:Key="StatusToColor"/>
+        <converters:StatusToLabelConverter x:Key="StatusToLabel"/>
+        <converters:ObjectToBoolConverter x:Key="ObjectToBool"/>
+        <converters:StringNotEmptyToBoolConverter x:Key="StringNotEmptyToBool"/>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Header Background (TitleBar + Menu) -->
+        <Border Height="30" 
+                VerticalAlignment="Top" 
+                Background="{DynamicResource HeaderBackground}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                PointerPressed="OnPointerPressed">
+            <Grid>
+                <!-- Left Buttons (Settings) -->
+                <StackPanel Orientation="Horizontal" 
+                            HorizontalAlignment="Left" 
+                            VerticalAlignment="Stretch">
+                    
+                    <Button Classes="TitleBarButton"
+                            ToolTip.Tip="Menu">
+                         <svg:Svg Path="avares://Diffy/Assets/Icons/menu.svg"
+                                Width="18"
+                                Height="18"
+                                VerticalAlignment="Center"/>
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                <MenuItem Header="_Open Repository..." 
+                                          Command="{Binding AddRepositoryCommand}"
+                                          CommandParameter="{Binding #RootWindow.StorageProvider}"
+                                          InputGesture="Ctrl+O"/>
+                                <MenuItem Header="_Recent Repositories" ItemsSource="{Binding RecentRepositories}">
+                                    <MenuItem.ItemTemplate>
+                                        <DataTemplate>
+                                            <MenuItem Command="{Binding #RootWindow.DataContext.OpenRecentCommand}"
+                                                      CommandParameter="{Binding}">
+                                                <MenuItem.Header>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding}" 
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   MaxWidth="400"
+                                                                   ToolTip.Tip="{Binding}"/>
+                                                    </StackPanel>
+                                                </MenuItem.Header>
+                                            </MenuItem>
+                                        </DataTemplate>
+                                    </MenuItem.ItemTemplate>
+                                </MenuItem>
+                                <Separator/>
+                                <MenuItem Header="Settings">
+                                    <MenuItem Header="_Theme">
+                                        <MenuItem Header="_Light" Command="{Binding ThemeCommand}" CommandParameter="Light"/>
+                                        <MenuItem Header="_Dark" Command="{Binding ThemeCommand}" CommandParameter="Dark"/>
+                                        <MenuItem Header="_System" Command="{Binding ThemeCommand}" CommandParameter="System"/>
+                                    </MenuItem>
+                                    <MenuItem Header="_Register Folder Context Menu" Command="{Binding ToggleContextMenuCommand}">
+                                        <MenuItem.Icon>
+                                             <svg:Svg Path="avares://Diffy/Assets/Icons/checkmark.svg"
+                                                     IsVisible="{Binding IsContextMenuRegistered}"
+                                                     Width="16"
+                                                     Height="16"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                </MenuItem>
+                                <MenuItem Header="About" Command="{Binding AboutCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="E_xit" InputGesture="Alt+F4" Command="{Binding ExitCommand}"/>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
+                    <Border Width="1" 
+                            Background="{DynamicResource BorderBrush}" 
+                            Margin="4,6" 
+                            Opacity="0.5"/>
+                </StackPanel>
+
+                <!-- Title (Fixed center) -->
+                <TextBlock Text="{Binding #RootWindow.Title}"
+                           HorizontalAlignment="Center" 
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           IsHitTestVisible="False"
+                           Foreground="{DynamicResource TextSecondary}"/>
+            </Grid>
+        </Border>
+
+        <!-- Main content -->
+        <Border Margin="0,30,0,0">
+            <Grid>
+                <!-- Empty State -->
+                <StackPanel IsVisible="{Binding !Repositories.Count}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="20">
+                    <TextBlock Text="Welcome to Diffy"
+                               FontSize="32"
+                               FontWeight="Light"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                    <TextBlock Text="Open a Git repository to start watching changes"
+                               FontSize="16"
+                               HorizontalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondary}"/>
+                    
+                    <Button Content="Open Repository"
+                            Command="{Binding AddRepositoryCommand}"
+                            CommandParameter="{Binding #RootWindow.StorageProvider}"
+                            HorizontalAlignment="Center"
+                            Padding="20,10"
+                            FontSize="14"/>
+                </StackPanel>
+    
+                <TabControl ItemsSource="{Binding Repositories}"
+                            SelectedIndex="{Binding SelectedTabIndex}"
+                            IsVisible="{Binding Repositories.Count}"
+                            Padding="0"
+                            TabStripPlacement="Bottom">
+                    <TabControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="*, Auto" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding RepositoryName}" 
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding CurrentBranch, StringFormat='({0})'}" 
+                                               Opacity="0.6" 
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding CurrentBranch, Converter={StaticResource StringNotEmptyToBool}}"/>
+                                </StackPanel>
+                                <Button Grid.Column="1"
+                                        Command="{Binding $parent[TabControl].DataContext.CloseTabCommand}"
+                                        CommandParameter="{Binding}"
+                                        Classes="CloseTab"
+                                        Width="20" Height="20"
+                                        Padding="0"
+                                        Background="Transparent"
+                                        CornerRadius="10"
+                                        Margin="4,0,0,0"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="×" FontSize="16" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
+    
+                    <TabControl.ContentTemplate>
+                        <DataTemplate>
+                            <views:RepositoryTabView DataContext="{Binding}"/>
+                        </DataTemplate>
+                    </TabControl.ContentTemplate>
+                </TabControl>
+    
+                <!-- Git History Placeholder Button -->
+                <Button HorizontalAlignment="Right" 
+                        VerticalAlignment="Bottom"
+                        Margin="0"
+                        Height="36"
+                        CornerRadius="0,0,8,0"
+                        Classes="DialogButton"
+                        Command="{Binding ToggleHistoryCommand}"
+                        IsVisible="{Binding Repositories.Count}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0">
+                         <svg:Svg Path="avares://Diffy/Assets/Icons/history.svg"
+                                Width="16"
+                                Height="16"
+                                VerticalAlignment="Center"/>
+                        <TextBlock Text="History" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Global Error Notification (Overlay) -->
+                <Border Background="{DynamicResource NotificationErrorBackground}" 
+                        BorderBrush="{DynamicResource NotificationErrorBorder}"
+                        BorderThickness="1"
+                        Padding="16,12" 
+                        CornerRadius="8"
+                        Margin="0,0,0,70"
+                        MaxWidth="650"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding ErrorMessage, Converter={StaticResource StringNotEmptyToBool}}"
+                        BoxShadow="0 4 12 #40000000">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <StackPanel Spacing="10" Grid.Column="0" VerticalAlignment="Center">
+                            <!-- Use Grid instead of horizontal StackPanel to allow TextWrapping -->
+                            <Grid ColumnDefinitions="Auto, *">
+                                <svg:Svg Grid.Column="0"
+                                          Path="avares://Diffy/Assets/Icons/warning.svg"
+                                         Width="20"
+                                         Height="20"
+                                         VerticalAlignment="Center"
+                                         Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding ErrorMessage}" 
+                                           Foreground="{DynamicResource NotificationErrorForeground}" 
+                                           VerticalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           FontWeight="Medium"
+                                           FontSize="13"/>
+                            </Grid>
+                            
+                            <!-- Trust and Retry Button -->
+                            <Button Content="Trust and Retry"
+                                    HorizontalAlignment="Left"
+                                    Margin="30,4,0,0"
+                                    Background="{DynamicResource NotificationErrorForeground}"
+                                    Foreground="White"
+                                    Padding="15,6"
+                                    FontSize="12"
+                                    Command="{Binding TrustAndRetryCommand}"
+                                    IsVisible="{Binding PendingTrustPath, Converter={StaticResource StringNotEmptyToBool}}">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                        <Setter Property="Opacity" Value="0.9"/>
+                                        <Setter Property="Background" Value="{DynamicResource NotificationErrorForeground}"/>
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Dismiss Button -->
+                        <Button Grid.Column="1" 
+                                Command="{Binding DismissErrorCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="6"
+                                VerticalAlignment="Center"
+                                Width="32" Height="32"
+                                CornerRadius="16"
+                                Margin="12,0,-4,0"
+                                ToolTip.Tip="Dismiss">
+                            <Button.Styles>
+                                <Style Selector="Button">
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                    <Setter Property="Background" Value="{DynamicResource NotificationDismissHover}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource NotificationErrorForeground}"/>
+                                </Style>
+                            </Button.Styles>
+                            <TextBlock Text="✕" 
+                                       Foreground="{DynamicResource NotificationErrorForeground}" 
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.8"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

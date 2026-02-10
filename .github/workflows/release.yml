@@ -1,0 +1,116 @@
+name: Release Build
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            rid: win-x64
+            artifact: diffy-win-x64.zip
+            
+          - name: Windows ARM64
+            os: windows-latest
+            rid: win-arm64
+            artifact: diffy-win-arm64.zip
+            
+          - name: macOS x64
+            os: macos-latest
+            rid: osx-x64
+            artifact: diffy-osx-x64.zip
+            
+          - name: macOS ARM64
+            os: macos-14
+            rid: osx-arm64
+            artifact: diffy-osx-arm64.zip
+            
+          - name: Linux x64
+            os: ubuntu-latest
+            rid: linux-x64
+            artifact: diffy-linux-x64.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Diffy.sln
+
+      - name: Publish
+        run: dotnet publish src/Diffy.App/Diffy.App.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish-output
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd publish-output
+          7z a -tzip ../${{ matrix.artifact }} *
+
+      - name: Create archive (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd publish-output
+          tar czf ../${{ matrix.artifact }} *
+
+      - name: Create archive (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          cd publish-output
+          zip -r ../${{ matrix.artifact }} *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  upload-assets:
+    name: Upload Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure
+        run: ls -R artifacts
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Get the release tag from the event
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          
+          echo "Uploading assets to release $RELEASE_TAG"
+          
+          # Upload all artifacts to the release
+          gh release upload "$RELEASE_TAG" \
+            artifacts/diffy-win-x64.zip/diffy-win-x64.zip \
+            artifacts/diffy-win-arm64.zip/diffy-win-arm64.zip \
+            artifacts/diffy-osx-x64.zip/diffy-osx-x64.zip \
+            artifacts/diffy-osx-arm64.zip/diffy-osx-arm64.zip \
+            artifacts/diffy-linux-x64.tar.gz/diffy-linux-x64.tar.gz \
+            --clobber
+          
+          echo "✅ All assets uploaded successfully!"

@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Diffy.sln
+
+      - name: Build
+        run: dotnet build Diffy.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test Diffy.sln -c Release --no-build --verbosity normal
+
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install formatting tool
+        run: dotnet tool install -g dotnet-format
+
+      - name: Check formatting
+        run: |
+          dotnet-format Diffy.sln --check --verbosity diagnostic
+
+      - name: Build with warnings as errors
+        run: dotnet build Diffy.sln -c Release -warnaserror
+
+

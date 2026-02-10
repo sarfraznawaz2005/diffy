@@ -1,0 +1,310 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Diffy.App.App"
+             RequestedThemeVariant="Default">
+             
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="WindowBackground">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="TitleBarBackground">#DCDCDC</SolidColorBrush> <!-- DISTINCT Darker Grey -->
+                    <SolidColorBrush x:Key="MenuBarBackground">#F5F5F7</SolidColorBrush>   <!-- Lighter Grey -->
+                    <SolidColorBrush x:Key="HeaderBackground">#E8E8E8</SolidColorBrush> <!-- Fallback/Legacy -->
+                    <SolidColorBrush x:Key="SurfaceBackground">#F0F0F0</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceBackgroundAlternative">#EFEFEF</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextPrimary">#000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextSecondary">#666666</SolidColorBrush>
+                    <SolidColorBrush x:Key="BorderBrush">#E0E0E0</SolidColorBrush>
+                    <SolidColorBrush x:Key="AccentColor">#007ACC</SolidColorBrush>
+                    <SolidColorBrush x:Key="AccentHover">#0062A3</SolidColorBrush>
+                    <SolidColorBrush x:Key="ListSelection">#CCE8FF</SolidColorBrush>
+                    <SolidColorBrush x:Key="ListHover">#E8E8E8</SolidColorBrush>
+                    <SolidColorBrush x:Key="InputBackground">#FFFFFF</SolidColorBrush>
+                    <SolidColorBrush x:Key="InputForeground">#000000</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffAddedBackground">#E6FFEC</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffRemovedBackground">#FFEBE9</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffAddedForeground">#1E7145</SolidColorBrush> <!-- Darker Green for Light Theme -->
+                    <SolidColorBrush x:Key="DiffRemovedForeground">#D1242F</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffHeaderBackground">#E7F3FF</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffHeaderForeground">#005A9E</SolidColorBrush>
+                     <SolidColorBrush x:Key="TabItemInactiveBackground">#E2E2E2</SolidColorBrush>
+                    <SolidColorBrush x:Key="TabItemSelectedBackground">#D2D2D2</SolidColorBrush>
+                    <SolidColorBrush x:Key="SubtleButtonHover">#D0D0D0</SolidColorBrush>
+                    
+                    <!-- Notification Styles -->
+                    <SolidColorBrush x:Key="NotificationErrorBackground">#FFF0F0</SolidColorBrush>
+                    <SolidColorBrush x:Key="NotificationErrorForeground">#D1242F</SolidColorBrush>
+                    <SolidColorBrush x:Key="NotificationErrorBorder">#F44336</SolidColorBrush>
+                    <SolidColorBrush x:Key="NotificationDismissHover">#FFE0E0</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="WindowBackground">#1E1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="TitleBarBackground">#151515</SolidColorBrush> <!-- Very Dark -->
+                    <SolidColorBrush x:Key="MenuBarBackground">#2D2D2D</SolidColorBrush>   <!-- Lighter -->
+                    <SolidColorBrush x:Key="HeaderBackground">#202020</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceBackground">#252526</SolidColorBrush>
+                    <SolidColorBrush x:Key="SurfaceBackgroundAlternative">#2D2D2D</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextPrimary">#CCCCCC</SolidColorBrush>
+                    <SolidColorBrush x:Key="TextSecondary">#888888</SolidColorBrush>
+                    <SolidColorBrush x:Key="BorderBrush">#3E3E42</SolidColorBrush>
+                    <SolidColorBrush x:Key="AccentColor">#0E639C</SolidColorBrush>
+                    <SolidColorBrush x:Key="AccentHover">#1177BB</SolidColorBrush>
+                    <SolidColorBrush x:Key="ListSelection">#094771</SolidColorBrush>
+                    <SolidColorBrush x:Key="ListHover">#2A2D2E</SolidColorBrush>
+                    <SolidColorBrush x:Key="InputBackground">#3C3C3C</SolidColorBrush>
+                    <SolidColorBrush x:Key="InputForeground">#CCCCCC</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffAddedBackground">#1E3F1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffRemovedBackground">#3F1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffAddedForeground">#4CC71E</SolidColorBrush> <!-- Bright Green for Dark Theme -->
+                    <SolidColorBrush x:Key="DiffRemovedForeground">#F44336</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffHeaderBackground">#094771</SolidColorBrush>
+                    <SolidColorBrush x:Key="DiffHeaderForeground">#4CC71E</SolidColorBrush>
+                     <SolidColorBrush x:Key="TabItemInactiveBackground">#2D2D2D</SolidColorBrush>
+                    <SolidColorBrush x:Key="TabItemSelectedBackground">#1E1E1E</SolidColorBrush>
+                    <SolidColorBrush x:Key="SubtleButtonHover">#383838</SolidColorBrush>
+
+                    <!-- Notification Styles -->
+                    <SolidColorBrush x:Key="NotificationErrorBackground">#2A1818</SolidColorBrush>
+                    <SolidColorBrush x:Key="NotificationErrorForeground">#F44336</SolidColorBrush>
+                    <SolidColorBrush x:Key="NotificationErrorBorder">#8B0000</SolidColorBrush>
+                    <SolidColorBrush x:Key="NotificationDismissHover">#3D2525</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        
+        <!-- Custom Styles -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource WindowBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+        
+        <Style Selector="TabControl">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBackground}"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="MinHeight" Value="25"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="MinWidth" Value="146"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="6, 12"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Background" Value="{DynamicResource TabItemInactiveBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="CornerRadius" Value="0,0,6,6"/>
+        </Style>
+
+        <Style Selector="TabItem /template/ Border#PART_SelectedPipe">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="TabItem:pointerover /template/ Border#PART_SelectedPipe">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+
+        <Style Selector="TabItem:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <Style Selector="TabItem:selected">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <Style Selector="TabItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="TabItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="TabItem:selected /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBackground}"/>
+            <Setter Property="CornerRadius" Value="0,0,6,6"/>
+        </Style>
+        <Style Selector="TabItem:pointerover /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBackground}"/>
+            <Setter Property="CornerRadius" Value="0,0,6,6"/>
+        </Style>
+        
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        
+        <Style Selector="ListBoxItem">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ListSelection}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ListSelection}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:selected:not(:focus) /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ListSelection}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ListHover}"/>
+        </Style>
+        
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InputForeground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        </Style>
+        
+        <Style Selector="Button">
+            <Setter Property="Background" Value="{DynamicResource AccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        
+        <Style Selector="Button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentHover}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Dialog Button Style -->
+        <Style Selector="Button.DialogButton">
+            <Setter Property="Background" Value="{DynamicResource TabItemInactiveBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="MinWidth" Value="80"/>
+        </Style>
+        <Style Selector="Button.DialogButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource TabItemSelectedBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+        
+        <Style Selector="Menu">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBackground}"/>
+        </Style>
+        
+        <Style Selector="MenuItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        
+        <Style Selector="MenuItem /template/ TextBlock#PART_InputGestureText">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+        </Style>
+
+        <!-- Close Tab Button Style -->
+        <Style Selector="Button.CloseTab">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+        </Style>
+        <Style Selector="Button.CloseTab:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C42B1C"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <Style Selector="Button.TitleBarButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="CornerRadius" Value="0"/>
+        </Style>
+        <Style Selector="Button.TitleBarButton TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+        <Style Selector="Button.TitleBarButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SubtleButtonHover}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+ 
+        <!-- Subtle Button Style -->
+        <Style Selector="Button.Subtle">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.Subtle:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SubtleButtonHover}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        </Style>
+
+
+        <!-- DataGrid Cell Vertical Centering -->
+        <Style Selector="DataGridRow">
+            <Setter Property="MinHeight" Value="32"/>
+        </Style>
+        <Style Selector="DataGridCell">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="DataGridCell /template/ ContentPresenter">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="DataGridCell TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="12,0,12,0"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader /template/ ContentPresenter">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="12,0,12,0"/>
+        </Style>
+        <Style Selector="DataGridColumnHeader TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+        
+        <!-- Actions Column Centering - Force center alignment for cells containing buttons -->
+        <Style Selector="DataGridCell:nth-child(5)">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="DataGridCell Border">
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+        <Style Selector="DataGridCell Button">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="DataGridCell Button /template/ ContentPresenter">
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+    </Application.Styles>
+</Application>

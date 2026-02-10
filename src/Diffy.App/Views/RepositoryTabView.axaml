@@ -1,0 +1,598 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:vm="using:Diffy.App.ViewModels"
+              xmlns:converters="using:Diffy.App.Converters"
+              xmlns:controls="using:Diffy.App.Controls"
+              xmlns:models="using:Diffy.Core.Models"
+              xmlns:views="clr-namespace:Diffy.App.Views"
+              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+              x:Class="Diffy.App.Views.RepositoryTabView"
+              x:DataType="vm:RepositoryTabViewModel"
+              x:Name="RootControl">
+
+    <UserControl.Styles>
+        <Style Selector="Border.diff-line">
+            <Setter Property="MinHeight" Value="18"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.diff-line[Tag=Added]">
+            <Setter Property="Background" Value="{DynamicResource DiffAddedBackground}"/>
+        </Style>
+        <Style Selector="Border.diff-line[Tag=Removed]">
+            <Setter Property="Background" Value="{DynamicResource DiffRemovedBackground}"/>
+        </Style>
+        <Style Selector="Border.diff-line[Tag=Header]">
+            <Setter Property="Background" Value="{DynamicResource DiffHeaderBackground}"/>
+        </Style>
+        <Style Selector="Border.diff-line[Tag=Header] TextBlock">
+             <Setter Property="Foreground" Value="{DynamicResource DiffHeaderForeground}"/>
+             <Setter Property="FontStyle" Value="Italic"/>
+        </Style>
+        <Style Selector="Border.diff-line[Tag=Header] controls|HighlightedTextBlock">
+             <Setter Property="Foreground" Value="{DynamicResource DiffHeaderForeground}"/>
+             <Setter Property="FontStyle" Value="Italic"/>
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="36"/>
+        </Style>
+        <Style Selector="TextBox.SearchBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+        </Style>
+        <Style Selector="TextBox.SearchBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+        </Style>
+        <Style Selector="TextBox.SearchBox /template/ Border#PART_BorderElement">
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.ToggleActive">
+            <Setter Property="Background" Value="{DynamicResource InputBackground}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+        <converters:StatusToColorConverter x:Key="StatusToColor"/>
+        <converters:StatusToLabelConverter x:Key="StatusToLabel"/>
+        <converters:DiffLineKindToStringConverter x:Key="KindToString"/>
+        <converters:ObjectToBoolConverter x:Key="ObjectToBool"/>
+        <converters:DiffModeToBoolConverter x:Key="DiffModeToBool"/>
+        <converters:LineNumberToOpacityConverter x:Key="LineNumberOpacity"/>
+        <converters:NullToBoolConverter x:Key="NullToBool"/>
+        <converters:InlineOldLineNumberVisibilityConverter x:Key="InlineOldLineNumberVisibility"/>
+        <converters:InlineLineNumberValueConverter x:Key="InlineLineNumberValue"/>
+        <converters:StringNotEmptyToBoolConverter x:Key="StringNotEmptyToBool"/>
+        <converters:StringStatusToColorConverter x:Key="StringStatusToColor"/>
+        <converters:StringStatusToLabelConverter x:Key="StringStatusToLabel"/>
+
+        <ContextMenu x:Key="UnifiedFileContextMenu" x:DataType="vm:RepositoryTabViewModel">
+            <MenuItem Header="_Open File" 
+                      Command="{Binding OpenFileCommand}"
+                      CommandParameter="{Binding SelectedFile}"/>
+            <MenuItem Header="Copy _Path" 
+                      Command="{Binding CopyPathCommand}"/>
+            <MenuItem Header="_Copy Contents" 
+                      Command="{Binding CopyFileContentCommand}"/>
+            <MenuItem Header="_Revert Changes" 
+                      Command="{Binding RevertFileCommand}"
+                      CommandParameter="{Binding SelectedFile}"/>
+            <MenuItem Header="_Delete File" 
+                      Command="{Binding DeleteFileCommand}"
+                      CommandParameter="{Binding SelectedFile}"/>
+        </ContextMenu>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- Diff View -->
+        <Grid Margin="0" IsVisible="{Binding !IsHistoryMode}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" MinWidth="200"/>
+                <ColumnDefinition Width="2"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- File List Panel -->
+            <Border Grid.Column="0" Background="{DynamicResource WindowBackground}" Padding="0">
+                <DockPanel>
+                    <!-- File Count Header -->
+                    <Border DockPanel.Dock="Top" Padding="12,0,0,0" MinHeight="40" Background="{DynamicResource SurfaceBackground}">
+                        <TextBlock Text="{Binding FilteredFiles.Count, StringFormat='Changed Files: {0}'}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                    </Border>
+
+                    <!-- Search Toolbar -->
+                    <Border DockPanel.Dock="Top" Padding="0,0,0,2" Background="{DynamicResource SurfaceBackgroundAlternative}">
+                        <TextBox Watermark="Search Content..."
+                                 Text="{Binding SearchQuery}"
+                                 Classes="SearchBox"
+                                 HorizontalAlignment="Stretch"
+                                 Padding="12,8"
+                                 Margin="0">
+                            <TextBox.InnerRightContent>
+                                <Button Command="{Binding ClearSearchCommand}"
+                                        Classes="Subtle"
+                                        IsVisible="{Binding SearchQuery, Converter={StaticResource StringNotEmptyToBool}}"
+                                        Padding="4"
+                                        Margin="0,0,4,0"
+                                        ToolTip.Tip="Clear Search">
+                                    <TextBlock Text="×" FontSize="14"/>
+                                </Button>
+                            </TextBox.InnerRightContent>
+                        </TextBox>
+                    </Border>
+
+                    <!-- File List -->
+                    <ListBox ItemsSource="{Binding FilteredFiles}"
+                             SelectedItem="{Binding SelectedFile}"
+                             Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="12,0,0,0" Height="32">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+
+                                    <!-- Status Badge -->
+                                    <Border Grid.Column="1"
+                                            Background="{Binding Status, Converter={StaticResource StatusToColor}}"
+                                            CornerRadius="3"
+                                            Padding="4,1"
+                                            Margin="0,0,8,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Status, Converter={StaticResource StatusToLabel}}"
+                                                   FontSize="10"
+                                                   FontWeight="Bold"
+                                                   Foreground="White"/>
+                                    </Border>
+
+                                    <!-- File Path -->
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding Path}"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip.Tip="{Binding Path}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextPrimary}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+
+                        <ListBox.ContextMenu>
+                            <StaticResource ResourceKey="UnifiedFileContextMenu"/>
+                        </ListBox.ContextMenu>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="Transparent"/>
+
+            <!-- Diff Viewer Panel -->
+            <Border Grid.Column="2" Background="{DynamicResource WindowBackground}">
+                <DockPanel>
+                    <!-- Diff Toolbar -->
+                    <Border DockPanel.Dock="Top" Padding="0,0,10,0" MinHeight="40" Background="{DynamicResource SurfaceBackground}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                   <Button Command="{Binding Diff.JumpToPreviousChangeCommand}"
+                                           ToolTip.Tip="Previous Change (Shift+F7)"
+                                           Classes="Subtle">
+                                        <svg:Svg Path="avares://Diffy/Assets/Icons/arrow-up.svg"
+                                                Width="14"
+                                                Height="14"
+                                                VerticalAlignment="Center"/>
+                                   </Button>
+                                   <Button Command="{Binding Diff.JumpToNextChangeCommand}"
+                                           ToolTip.Tip="Next Change (F7)"
+                                           Classes="Subtle">
+                                        <svg:Svg Path="avares://Diffy/Assets/Icons/arrow-down.svg"
+                                                Width="14"
+                                                Height="14"
+                                                VerticalAlignment="Center"/>
+                                   </Button>
+
+                                  <Border Width="1" Height="20" Background="{DynamicResource BorderBrush}" Margin="8,0"/>
+
+                                   <Button Command="{Binding Diff.ToggleIgnoreWhitespaceCommand}"
+                                           ToolTip.Tip="Ignore Whitespace"
+                                           Classes="Subtle"
+                                           Classes.ToggleActive="{Binding Diff.IgnoreWhitespace}">
+                                        <svg:Svg Path="avares://Diffy/Assets/Icons/pilcrow.svg"
+                                                Width="14"
+                                                Height="14"
+                                                VerticalAlignment="Center"/>
+                                   </Button>
+
+                                  <Border Width="1" Height="20" Background="{DynamicResource BorderBrush}" Margin="8,0"/>
+
+                                   <Button Command="{Binding Diff.ToggleModeCommand}"
+                                            ToolTip.Tip="Toggle Diff Mode"
+                                            Classes="Subtle">
+                                        <svg:Svg Path="avares://Diffy/Assets/Icons/toggle-mode.svg"
+                                                Width="14"
+                                                Height="14"
+                                                VerticalAlignment="Center"/>
+                                   </Button>
+                              </StackPanel>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding SelectedFile.Path, FallbackValue='No file selected'}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontWeight="SemiBold"
+                                       FontSize="13"
+                                       Foreground="{DynamicResource TextPrimary}"/>
+
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" IsVisible="{Binding Diff.CurrentDiff, Converter={StaticResource ObjectToBool}}">
+                                <TextBlock Text="{Binding Diff.CurrentDiff.Additions, StringFormat='+{0}'}"
+                                           Foreground="{DynamicResource DiffAddedForeground}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Diff.CurrentDiff.Deletions, StringFormat='-{0}'}"
+                                           Foreground="{DynamicResource DiffRemovedForeground}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Diff Content -->
+                    <Grid>
+                        <!-- Loading Indicator -->
+                        <StackPanel IsVisible="{Binding Diff.IsLoading}"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                            <ProgressBar IsIndeterminate="True" Width="200"/>
+                            <TextBlock Text="Loading diff..."
+                                       HorizontalAlignment="Center"
+                                       Margin="0,10,0,0"
+                                       Foreground="{DynamicResource TextSecondary}"/>
+                        </StackPanel>
+
+                        <!-- Empty State -->
+                        <TextBlock Text="{Binding EmptyStateMessage}"
+                                   IsVisible="{Binding SelectedFile, Converter={StaticResource NullToBool}}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"
+                                   FontSize="16"/>
+
+                        <!-- Binary File Message -->
+                        <TextBlock Text="Binary file - cannot display diff"
+                                   IsVisible="{Binding Diff.CurrentDiff.IsBinary, FallbackValue=False, TargetNullValue=False}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+
+                        <!-- Diff Display -->
+                        <Grid IsVisible="{Binding Diff.CurrentDiff, Converter={StaticResource ObjectToBool}}">
+                            
+                            <!-- Inline View -->
+                            <Grid IsVisible="{Binding Diff.Mode, Converter={StaticResource DiffModeToBool}, ConverterParameter=Inline}">
+                                <ListBox x:Name="InlineListBox"
+                                         ItemsSource="{Binding Diff.CurrentDiff.InlineLines}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="0">
+                                <ListBox.Styles>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="MinHeight" Value="26"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ContextMenu>
+                                    <StaticResource ResourceKey="UnifiedFileContextMenu"/>
+                                </ListBox.ContextMenu>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="diff-line"
+                                                Tag="{Binding Kind, Converter={StaticResource KindToString}}"
+                                                Padding="2,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="30"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <!-- Single Line Number Column -->
+                                                <TextBlock Grid.Column="0"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           FontFamily="Consolas, Courier New"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Right"
+                                                           Margin="0,0,5,0"
+                                                           Opacity="0.7">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{StaticResource InlineLineNumberValue}">
+                                                            <Binding Path="OldLineNumber"/>
+                                                            <Binding Path="NewLineNumber"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                                <!-- Content -->
+                                                <controls:HighlightedTextBlock Grid.Column="1"
+                                                            SourceText="{Binding Content}"
+                                                            Highlights="{Binding Highlights}"
+                                                            FontFamily="Consolas, Courier New"
+                                                            FontSize="12"
+                                                            Foreground="{DynamicResource TextPrimary}"
+                                                            TextWrapping="Wrap"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            
+                            <!-- Minimap Overlay for Inline View -->
+                            <controls:DiffMinimapControl 
+                                DiffLines="{Binding Diff.CurrentDiff.InlineLines}"
+                                ScrollViewer="{Binding #InlineListBox.Scroll}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Stretch"
+                                MinimapWidth="30"
+                                Margin="0,0,0,0"/>
+                        </Grid>
+
+                            <!-- Side-by-Side View -->
+                            <Grid IsVisible="{Binding Diff.Mode, Converter={StaticResource DiffModeToBool}, ConverterParameter=SideBySide}">
+                                <ListBox x:Name="SideBySideListBox"
+                                         ItemsSource="{Binding Diff.CurrentDiff.AlignedRows}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="0">
+                                <ListBox.Styles>
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="MinHeight" Value="26"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                    </Style>
+                                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ContextMenu>
+                                    <StaticResource ResourceKey="UnifiedFileContextMenu"/>
+                                </ListBox.ContextMenu>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                             
+                                            <!-- Left Side (Old) -->
+                                            <Border Grid.Column="0"
+                                                    Classes="diff-line"
+                                                    Tag="{Binding OldLine.Kind, Converter={StaticResource KindToString}}"
+                                                    Padding="10,0"
+                                                    BorderThickness="0,0,1,0"
+                                                    BorderBrush="{DynamicResource SurfaceBackgroundAlternative}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="40"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding OldLine.OldLineNumber}"
+                                                               Foreground="{DynamicResource TextSecondary}"
+                                                               FontFamily="Consolas, Courier New"
+                                                               FontSize="12"
+                                                               Opacity="{Binding OldLine.OldLineNumber, Converter={StaticResource LineNumberOpacity}}"/>
+                                                    <controls:HighlightedTextBlock Grid.Column="1"
+                                                               SourceText="{Binding OldLine.Content}"
+                                                               Highlights="{Binding OldLine.Highlights}"
+                                                               FontFamily="Consolas, Courier New"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </Border>
+
+                                            <!-- Right Side (New) -->
+                                            <Border Grid.Column="1"
+                                                    Classes="diff-line"
+                                                    Tag="{Binding NewLine.Kind, Converter={StaticResource KindToString}}"
+                                                    Padding="10,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="40"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0"
+                                                               Text="{Binding NewLine.NewLineNumber}"
+                                                               Foreground="{DynamicResource TextSecondary}"
+                                                               FontFamily="Consolas, Courier New"
+                                                               FontSize="12"
+                                                               Opacity="{Binding NewLine.NewLineNumber, Converter={StaticResource LineNumberOpacity}}"/>
+                                                    <controls:HighlightedTextBlock Grid.Column="1"
+                                                               SourceText="{Binding NewLine.Content}"
+                                                               Highlights="{Binding NewLine.Highlights}"
+                                                               FontFamily="Consolas, Courier New"
+                                                               FontSize="12"
+                                                               Foreground="{DynamicResource TextPrimary}"
+                                                               TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            
+                            <!-- Minimap Overlay for Side-by-Side View -->
+                            <controls:DiffMinimapControl 
+                                DiffLines="{Binding Diff.CurrentDiff.InlineLines}"
+                                ScrollViewer="{Binding #SideBySideListBox.Scroll}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Stretch"
+                                MinimapWidth="30"
+                                Margin="0,0,0,0"/>
+                        </Grid>
+                        </Grid>
+                    </Grid>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- History View -->
+        <views:HistoryView IsVisible="{Binding IsHistoryMode}"/>
+
+        <!-- Commit Files Overlay -->
+        <Border Background="#A0000000" 
+                IsVisible="{Binding History.IsCommitFilesVisible}"
+                ZIndex="100">
+            <Border Background="{DynamicResource WindowBackground}"
+                    CornerRadius="8"
+                    MaxWidth="600"
+                    MaxHeight="500"
+                    Padding="0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 4 20 #80000000">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Header -->
+                    <Border Grid.Row="0" 
+                            Padding="16,12" 
+                            Background="{DynamicResource SurfaceBackground}"
+                            CornerRadius="8,8,0,0"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1">
+                        <Grid ColumnDefinitions="*, Auto">
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Changed Files" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock Text="{Binding History.SelectedCommit.Hash, StringFormat='Commit: {0}'}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" 
+                                    Command="{Binding History.CloseCommitFilesCommand}"
+                                    Classes="Subtle"
+                                    Width="30" Height="30"
+                                    Padding="0">
+                                <TextBlock Text="×" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0" Foreground="{DynamicResource TextSecondary}"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- File List -->
+                    <ScrollViewer Grid.Row="1" MaxHeight="350" Padding="0">
+                        <ItemsControl ItemsSource="{Binding History.CommitFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="12,2" 
+                                            Background="Transparent" 
+                                            BorderBrush="{DynamicResource BorderBrush}" 
+                                            BorderThickness="0,0,0,1">
+                                        <Grid ColumnDefinitions="28, *">
+                                            <Border Grid.Column="0" 
+                                                    Width="18" Height="18"
+                                                    Background="{Binding ChangeType, Converter={StaticResource StringStatusToColor}}"
+                                                    CornerRadius="3"
+                                                    Margin="0,0,10,0"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding ChangeType, Converter={StaticResource StringStatusToLabel}}" 
+                                                           FontSize="10" 
+                                                           FontWeight="Black" 
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="White"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="1" 
+                                                       Text="{Binding Path}" 
+                                                       VerticalAlignment="Center" 
+                                                       TextTrimming="CharacterEllipsis"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextPrimary}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" 
+                            Padding="16,12" 
+                            Background="{DynamicResource SurfaceBackgroundAlternative}"
+                            CornerRadius="0,0,8,8">
+                        <Button HorizontalAlignment="Right" 
+                                Command="{Binding History.CloseCommitFilesCommand}"
+                                Classes="DialogButton"
+                                Content="Dismiss"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Confirmation Dialog Overlay -->
+        <Border Background="#A0000000" 
+                IsVisible="{Binding IsConfirmationVisible}"
+                ZIndex="101">
+            <Border Background="{DynamicResource WindowBackground}"
+                    CornerRadius="8"
+                    MaxWidth="400"
+                    Padding="0"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    BoxShadow="0 4 20 #80000000">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Header -->
+                    <Border Grid.Row="0" 
+                            Padding="16,12" 
+                            Background="{DynamicResource SurfaceBackground}"
+                            CornerRadius="8,8,0,0"
+                            BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="0,0,0,1">
+                        <TextBlock Text="{Binding ConfirmationTitle}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource TextPrimary}"/>
+                    </Border>
+
+                    <!-- Message -->
+                    <Border Grid.Row="1" Padding="16,20">
+                        <TextBlock Text="{Binding ConfirmationMessage}" 
+                                   TextWrapping="Wrap" 
+                                   FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                    </Border>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" 
+                            Padding="16,12" 
+                            Background="{DynamicResource SurfaceBackgroundAlternative}"
+                            CornerRadius="0,0,8,8">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                            <Button Command="{Binding CancelConfirmationCommand}"
+                                    Classes="DialogButton"
+                                    Content="Cancel"/>
+                            <Button Command="{Binding ConfirmActionCommand}"
+                                    Classes="DialogButton"
+                                    Theme="{StaticResource AccentButtonTheme}"
+                                    Content="Confirm"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>
