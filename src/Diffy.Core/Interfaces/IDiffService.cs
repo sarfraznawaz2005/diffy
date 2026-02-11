@@ -31,4 +31,9 @@ public interface IDiffService
     /// Generates a diff between two strings.
     /// </summary>
     FileDiff GenerateDiff(string oldText, string newText, string filePath, bool ignoreWhitespace = false);
+
+    /// <summary>
+    /// Generates a diff with context lines (hunks only).
+    /// </summary>
+    FileDiff GenerateDiffWithContext(string oldText, string newText, string filePath, bool ignoreWhitespace = false, int contextLines = 5);
 }

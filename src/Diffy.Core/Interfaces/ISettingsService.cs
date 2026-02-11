@@ -43,6 +43,16 @@ public interface ISettingsService
     void SetIgnoreWhitespace(bool ignore);
 
     /// <summary>
+    /// Gets whether to show full file content or only hunks with context.
+    /// </summary>
+    bool GetShowFullContent();
+
+    /// <summary>
+    /// Sets whether to show full file content or only hunks with context.
+    /// </summary>
+    void SetShowFullContent(bool showFull);
+
+    /// <summary>
     /// Gets the current application theme.
     /// </summary>
     AppTheme GetTheme();

@@ -164,6 +164,18 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
                 }
             });
 
+        // React to ShowFullContent changes
+        Diff.WhenAnyValue(x => x.ShowFullContent)
+            .Skip(1) // Skip initial value
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(async _ =>
+            {
+                if (SelectedFile != null)
+                {
+                    await Diff.LoadDiffAsync(SelectedFile);
+                }
+            });
+
         // Forward scroll requests to the View
         Diff.ScrollRequested += (index, mode) => ScrollRequested?.Invoke(index, mode);
     }

@@ -97,6 +97,19 @@ public class SettingsService : ISettingsService
         SaveGlobalSettings();
     }
 
+    public bool GetShowFullContent()
+    {
+        EnsureGlobalSettingsLoaded();
+        return _globalSettings!.ShowFullContent;
+    }
+
+    public void SetShowFullContent(bool showFull)
+    {
+        EnsureGlobalSettingsLoaded();
+        _globalSettings!.ShowFullContent = showFull;
+        SaveGlobalSettings();
+    }
+
     public AppTheme GetTheme()
     {
         EnsureGlobalSettingsLoaded();
@@ -249,6 +262,7 @@ public class SettingsService : ISettingsService
         public List<string> RecentRepositories { get; set; } = new();
         public string? LastActiveRepository { get; set; }
         public bool IgnoreWhitespace { get; set; }
+        public bool ShowFullContent { get; set; } = false; // Default to hunks only
     }
 
 }

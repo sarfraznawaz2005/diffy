@@ -281,6 +281,141 @@ public class DiffService : IDiffService
         return fileDiff;
     }
 
+    public FileDiff GenerateDiffWithContext(string oldText, string newText, string filePath, bool ignoreWhitespace = false, int contextLines = 5)
+    {
+        var fileDiff = new FileDiff { FilePath = filePath };
+
+        // Use DiffPlex to get the full side-by-side diff model
+        var sideBySide = _sideBySideDiffBuilder.BuildDiffModel(oldText, newText, ignoreWhitespace);
+
+        var allOldLines = new List<DiffLine>();
+        var allNewLines = new List<DiffLine>();
+
+        // First pass: create all lines
+        for (int i = 0; i < sideBySide.OldText.Lines.Count; i++)
+        {
+            var oldLine = sideBySide.OldText.Lines[i];
+            allOldLines.Add(new DiffLine
+            {
+                OldLineNumber = oldLine.Position ?? -1,
+                NewLineNumber = -1,
+                Content = oldLine.Text ?? string.Empty,
+                Kind = MapChangeType(oldLine.Type, isNew: false)
+            });
+
+            if (oldLine.Type == ChangeType.Deleted || oldLine.Type == ChangeType.Modified)
+            {
+                fileDiff.Deletions++;
+                if (oldLine.Type == ChangeType.Modified)
+                {
+                    allOldLines[i].Highlights = GetSubLineHighlights(oldLine.SubPieces, isNew: false);
+                }
+            }
+        }
+
+        for (int i = 0; i < sideBySide.NewText.Lines.Count; i++)
+        {
+            var newLine = sideBySide.NewText.Lines[i];
+            allNewLines.Add(new DiffLine
+            {
+                OldLineNumber = -1,
+                NewLineNumber = newLine.Position ?? -1,
+                Content = newLine.Text ?? string.Empty,
+                Kind = MapChangeType(newLine.Type, isNew: true)
+            });
+
+            if (newLine.Type == ChangeType.Inserted || newLine.Type == ChangeType.Modified)
+            {
+                fileDiff.Additions++;
+                if (newLine.Type == ChangeType.Modified)
+                {
+                    allNewLines[i].Highlights = GetSubLineHighlights(newLine.SubPieces, isNew: true);
+                }
+            }
+        }
+
+        // Second pass: identify changes and include surrounding context
+        var includedLines = new HashSet<int>();
+        
+        // Find all changed lines in BOTH old and new lines
+        for (int i = 0; i < allOldLines.Count; i++)
+        {
+            if (allOldLines[i].Kind != DiffLineKind.Unchanged && allOldLines[i].Kind != DiffLineKind.Placeholder)
+            {
+                // Include the changed line and surrounding context
+                for (int j = Math.Max(0, i - contextLines); j < Math.Min(allOldLines.Count, i + contextLines + 1); j++)
+                {
+                    includedLines.Add(j);
+                }
+            }
+        }
+        
+        // Also check new lines for additions (in case old line was placeholder)
+        for (int i = 0; i < allNewLines.Count; i++)
+        {
+            if (allNewLines[i].Kind != DiffLineKind.Unchanged && allNewLines[i].Kind != DiffLineKind.Placeholder)
+            {
+                // Include the changed line and surrounding context
+                for (int j = Math.Max(0, i - contextLines); j < Math.Min(allNewLines.Count, i + contextLines + 1); j++)
+                {
+                    includedLines.Add(j);
+                }
+            }
+        }
+
+        // Create blocks with only included lines
+        var block = new DiffBlock { FilePath = filePath };
+
+        for (int i = 0; i < allOldLines.Count; i++)
+        {
+            if (includedLines.Contains(i))
+            {
+                block.OldLines.Add(allOldLines[i]);
+                block.NewLines.Add(allNewLines[i]);
+
+                // Add to inline: if it's a change, add both (Removed then Added)
+                // if it's context, add once
+                if (allOldLines[i].Kind == DiffLineKind.Unchanged)
+                {
+                    fileDiff.InlineLines.Add(allOldLines[i]);
+                }
+                else
+                {
+                    if (allOldLines[i].Kind == DiffLineKind.Removed || allOldLines[i].Kind == DiffLineKind.Added)
+                    {
+                        if (allOldLines[i].Kind == DiffLineKind.Removed)
+                            fileDiff.InlineLines.Add(allOldLines[i]);
+                        if (allNewLines[i].Kind == DiffLineKind.Added)
+                            fileDiff.InlineLines.Add(allNewLines[i]);
+                    }
+                    else if (allOldLines[i].Kind == DiffLineKind.Placeholder)
+                    {
+                        if (allNewLines[i].Kind == DiffLineKind.Added)
+                            fileDiff.InlineLines.Add(allNewLines[i]);
+                    }
+                    else if (allNewLines[i].Kind == DiffLineKind.Placeholder)
+                    {
+                        if (allOldLines[i].Kind == DiffLineKind.Removed)
+                            fileDiff.InlineLines.Add(allOldLines[i]);
+                    }
+                }
+
+                fileDiff.AlignedRows.Add(new AlignedDiffRow
+                {
+                    OldLine = allOldLines[i],
+                    NewLine = allNewLines[i]
+                });
+            }
+        }
+
+        if (block.OldLines.Count > 0)
+        {
+            fileDiff.Blocks.Add(block);
+        }
+
+        return fileDiff;
+    }
+
     public string GenerateInlineDiff(FileDiff diff)
     {
         var lines = new List<string>();

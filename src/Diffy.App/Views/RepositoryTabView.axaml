@@ -231,6 +231,19 @@
                                                 Css="{DynamicResource SvgColor}"
                                                 VerticalAlignment="Center"/>
                                    </Button>
+
+                                  <Border Width="1" Height="20" Background="{DynamicResource BorderBrush}" Margin="8,0"/>
+
+                                   <Button Command="{Binding Diff.ToggleFullContentCommand}"
+                                            ToolTip.Tip="Toggle Full Content"
+                                            Classes="Subtle"
+                                            Classes.ToggleActive="{Binding !Diff.ShowFullContent}">
+                                        <svg:Svg Path="avares://Diffy/Assets/Icons/expand-content.svg"
+                                                Width="14"
+                                                Height="14"
+                                                Css="{DynamicResource SvgColor}"
+                                                VerticalAlignment="Center"/>
+                                   </Button>
                               </StackPanel>
 
                             <TextBlock Grid.Column="1"

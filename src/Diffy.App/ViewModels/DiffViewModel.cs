@@ -39,9 +39,11 @@ public class DiffViewModel : ViewModelBase, IDisposable
 
         Mode = _settingsService.GetDiffMode();
         IgnoreWhitespace = _settingsService.GetIgnoreWhitespace();
+        ShowFullContent = _settingsService.GetShowFullContent();
 
         ToggleModeCommand = ReactiveCommand.Create(ToggleMode);
         ToggleIgnoreWhitespaceCommand = ReactiveCommand.Create(ToggleIgnoreWhitespace);
+        ToggleFullContentCommand = ReactiveCommand.Create(ToggleFullContent);
         JumpToNextChangeCommand = ReactiveCommand.Create(() => JumpToChange(1));
         JumpToPreviousChangeCommand = ReactiveCommand.Create(() => JumpToChange(-1));
         CopyFullDiffCommand = ReactiveCommand.CreateFromTask(CopyFullDiffAsync);
@@ -50,11 +52,13 @@ public class DiffViewModel : ViewModelBase, IDisposable
     [Reactive] public FileDiff? CurrentDiff { get; set; }
     [Reactive] public DiffMode Mode { get; set; }
     [Reactive] public bool IgnoreWhitespace { get; set; }
+    [Reactive] public bool ShowFullContent { get; set; }
     [Reactive] public bool IsLoading { get; set; }
     [Reactive] public string? HighlightingSearchQuery { get; set; }
 
     public ReactiveCommand<Unit, Unit> ToggleModeCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleIgnoreWhitespaceCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleFullContentCommand { get; }
     public ReactiveCommand<Unit, Unit> JumpToNextChangeCommand { get; }
     public ReactiveCommand<Unit, Unit> JumpToPreviousChangeCommand { get; }
     public ReactiveCommand<Unit, Unit> CopyFullDiffCommand { get; }
@@ -97,7 +101,9 @@ public class DiffViewModel : ViewModelBase, IDisposable
             ct.ThrowIfCancellationRequested();
 
             var diffResult = await Task.Run(() =>
-                _diffService.GenerateDiff(oldContent, newContent, file.Path, IgnoreWhitespace),
+                ShowFullContent 
+                    ? _diffService.GenerateDiff(oldContent, newContent, file.Path, IgnoreWhitespace)
+                    : _diffService.GenerateDiffWithContext(oldContent, newContent, file.Path, IgnoreWhitespace, 5),
                 ct);
 
             // Use progressive highlighting for large files
@@ -164,6 +170,12 @@ public class DiffViewModel : ViewModelBase, IDisposable
     {
         IgnoreWhitespace = !IgnoreWhitespace;
         _settingsService.SetIgnoreWhitespace(IgnoreWhitespace);
+    }
+
+    private void ToggleFullContent()
+    {
+        ShowFullContent = !ShowFullContent;
+        _settingsService.SetShowFullContent(ShowFullContent);
     }
 
     private int _lastJumpIndex = -1;
