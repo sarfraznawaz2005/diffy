@@ -56,16 +56,8 @@
 
 ### Download Releases
 
-Get the latest release for your platform from the [Releases page](https://github.com/sarfraznawaz2005/diffy/releases/latest):
+Get the latest release for your platform from the [releases page](https://github.com/sarfraznawaz2005/diffy/releases/latest)
 
-| Platform | Architecture | Download |
-|----------|-------------|----------|
-| Windows | x64 | `diffy-win-x64.zip` |
-| Windows | ARM64 | `diffy-win-arm64.zip` |
-| macOS | Intel (x64) | `diffy-osx-x64.zip` |
-| macOS | Apple Silicon (arm64) | `diffy-osx-arm64.zip` |
-| Linux | x64 | `diffy-linux-x64.zip` |
-| Linux | ARM64 | `diffy-linux-arm64.zip` |
 
 ### Build from Source
 
