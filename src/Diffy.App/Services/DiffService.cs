@@ -494,7 +494,7 @@ public class DiffService : IDiffService
 
         // Define theme-aware background colors for intra-line changes
         var theme = _settingsService.GetTheme();
-        var isDark = theme == AppTheme.Dark || (theme == AppTheme.System && IsDarkMode());
+        var isDark = theme == AppTheme.Dark;
 
         // For light theme: slightly darker red/green (more saturated) with black text
         // For dark theme: subtle dark red/green (slightly brighter than very dark) with white text for contrast
@@ -521,28 +521,5 @@ public class DiffService : IDiffService
         }
 
         return highlights;
-    }
-
-    private bool IsDarkMode()
-    {
-        // Cross-platform dark mode detection
-        // First try to get from settings service (works on any thread)
-        var theme = _settingsService.GetTheme();
-        if (theme == AppTheme.Dark)
-            return true;
-        if (theme == AppTheme.Light)
-            return false;
-
-        // System theme - try to get actual value from Avalonia (must be on UI thread)
-        try
-        {
-            var themeVariant = Application.Current?.ActualThemeVariant;
-            return themeVariant == ThemeVariant.Dark;
-        }
-        catch (InvalidOperationException)
-        {
-            // Not on UI thread - assume light mode as conservative default
-            return false;
-        }
     }
 }

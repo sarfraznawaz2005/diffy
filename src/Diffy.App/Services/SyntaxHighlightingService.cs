@@ -48,19 +48,14 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         {
             themeName = ThemeName.LightPlus;
         }
-        else if (appTheme == Diffy.Core.Interfaces.AppTheme.Dark)
+        else
         {
             themeName = ThemeName.DarkPlus;
         }
-        else
-        {
-            // System theme - detect via Avalonia
-            var actual = Avalonia.Application.Current?.ActualThemeVariant;
-            themeName = actual == Avalonia.Styling.ThemeVariant.Light ? ThemeName.LightPlus : ThemeName.DarkPlus;
-        }
         
         // If theme changed since last call, clear caches
-        if (_lastThemeName.HasValue && _lastThemeName.Value != themeName)
+        // Note: Always clear on first call when _lastThemeName is null
+        if (!_lastThemeName.HasValue || _lastThemeName.Value != themeName)
         {
             _registries.Clear();
             _highlightCache.Clear();
@@ -92,7 +87,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
             var scope = registryOptions.GetScopeByExtension(extension);
 
             // Tokenize all lines (not selective) to support side-by-side view which shows entire file
-            // Note: GetHighlights tokenizes the entire content, which is needed because
+            // Note: GetHighlights tokenizes entire content, which is needed because
             // DiffPlex's SideBySideDiffBuilder includes all lines, not just changed hunks
             var oldTask = Task.Run(() => GetHighlights(oldContent, scope, registryOptions), cancellationToken);
             var newTask = Task.Run(() => GetHighlights(newContent, scope, registryOptions), cancellationToken);
@@ -198,7 +193,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         }
 
         // Process lines after viewport
-        for (int i = visibleEnd + 1; i < totalLines; i += chunkSize)
+        for (int i = visibleEnd +1; i < totalLines; i += chunkSize)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -329,10 +324,10 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         var newSegments = new List<HighlightedSegment>();
         var pointList = points.ToList();
 
-        for (int i = 0; i < pointList.Count - 1; i++)
+        for (int i = 0; i < pointList.Count -1; i++)
         {
             int start = pointList[i];
-            int end = pointList[i + 1];
+            int end = pointList[i +1];
             if (start >= end) continue;
 
             // Check if this range is covered by a search highlight
@@ -421,10 +416,10 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         var merged = new List<HighlightedSegment>();
         var pointList = points.ToList();
 
-        for (int i = 0; i < pointList.Count - 1; i++)
+        for (int i = 0; i < pointList.Count -1; i++)
         {
             int start = pointList[i];
-            int end = pointList[i + 1];
+            int end = pointList[i +1];
             if (start >= end) continue;
 
             // Query both trees for overlapping intervals
@@ -450,7 +445,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
                     Length = end - start,
                     // Priority: Diff background > Syntax background > null
                     BackgroundHex = diffSeg?.BackgroundHex ?? syntaxSeg?.BackgroundHex,
-                    // If there's a diff background, use the diff's text color (black for readability on colored backgrounds)
+                    // If there's a diff background, use diff's text color (black for readability on colored backgrounds)
                     // Otherwise, use the syntax color
                     ColorHex = diffSeg?.BackgroundHex != null
                         ? diffSeg?.ColorHex
@@ -594,7 +589,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         {
             TextMateSharp.Grammars.IStateStack? state = null;
 
-            // Tokenize from the start of the range to maintain state
+            // Tokenize from the start of range to maintain state
             for (int i = range.Start; i <= range.End; i++)
             {
                 var line = document.GetLineByNumber(i);
@@ -671,7 +666,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         var currentStart = sortedLines[0];
         var currentEnd = sortedLines[0];
 
-        for (int i = 1; i < sortedLines.Count; i++)
+        for (int i =1; i < sortedLines.Count; i++)
         {
             if (sortedLines[i] == currentEnd + 1)
             {

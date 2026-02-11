@@ -58,7 +58,7 @@ public class SettingsServiceTests : IDisposable
     public void SetTheme_SavesAndReturnsCorrectTheme()
     {
         // Arrange
-        var themes = new[] { AppTheme.Dark, AppTheme.System, AppTheme.Light };
+        var themes = new[] { AppTheme.Dark, AppTheme.Light };
 
         foreach (var theme in themes)
         {

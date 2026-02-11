@@ -78,7 +78,6 @@
                                     <MenuItem Header="_Theme">
                                         <MenuItem Header="_Light" Command="{Binding ThemeCommand}" CommandParameter="Light"/>
                                         <MenuItem Header="_Dark" Command="{Binding ThemeCommand}" CommandParameter="Dark"/>
-                                        <MenuItem Header="_System" Command="{Binding ThemeCommand}" CommandParameter="System"/>
                                     </MenuItem>
                                     <MenuItem Header="_Register Folder Context Menu" Command="{Binding ToggleContextMenuCommand}">
                                         <MenuItem.Icon>

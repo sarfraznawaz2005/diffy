@@ -211,7 +211,7 @@ public class MainWindowViewModel : ViewModelBase
         {
             "Light" => AppTheme.Light,
             "Dark" => AppTheme.Dark,
-            _ => AppTheme.System
+            _ => AppTheme.Light // Default to Light
         };
 
         _settingsService.SetTheme(appTheme);
@@ -223,7 +223,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 AppTheme.Light => Avalonia.Styling.ThemeVariant.Light,
                 AppTheme.Dark => Avalonia.Styling.ThemeVariant.Dark,
-                _ => Avalonia.Styling.ThemeVariant.Default
+                _ => Avalonia.Styling.ThemeVariant.Light // Default to Light
             };
         }
     }

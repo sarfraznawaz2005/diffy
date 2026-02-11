@@ -95,7 +95,6 @@ public interface ISettingsService
 /// </summary>
 public enum AppTheme
 {
-    System,
     Light,
     Dark
 }
