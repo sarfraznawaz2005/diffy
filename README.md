@@ -9,9 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/sarfraznawaz2005/diffy/releases/latest">
-    <img src="https://img.shields.io/github/v/release/sarfraznawaz2005/diffy" alt="Latest Release"/>
-  </a>
   <a href="https://github.com/sarfraznawaz2005/diffy/actions/workflows/ci.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/sarfraznawaz2005/diffy/ci.yml" alt="CI Status"/>
   </a>
