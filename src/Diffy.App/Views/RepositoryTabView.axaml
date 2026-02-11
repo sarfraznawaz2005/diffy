@@ -194,6 +194,7 @@
                                         <svg:Svg Path="avares://Diffy/Assets/Icons/arrow-up.svg"
                                                 Width="14"
                                                 Height="14"
+                                                Css="{DynamicResource SvgColor}"
                                                 VerticalAlignment="Center"/>
                                    </Button>
                                    <Button Command="{Binding Diff.JumpToNextChangeCommand}"
@@ -202,6 +203,7 @@
                                         <svg:Svg Path="avares://Diffy/Assets/Icons/arrow-down.svg"
                                                 Width="14"
                                                 Height="14"
+                                                Css="{DynamicResource SvgColor}"
                                                 VerticalAlignment="Center"/>
                                    </Button>
 
@@ -214,6 +216,7 @@
                                         <svg:Svg Path="avares://Diffy/Assets/Icons/pilcrow.svg"
                                                 Width="14"
                                                 Height="14"
+                                                Css="{DynamicResource SvgColor}"
                                                 VerticalAlignment="Center"/>
                                    </Button>
 
@@ -225,6 +228,7 @@
                                         <svg:Svg Path="avares://Diffy/Assets/Icons/toggle-mode.svg"
                                                 Width="14"
                                                 Height="14"
+                                                Css="{DynamicResource SvgColor}"
                                                 VerticalAlignment="Center"/>
                                    </Button>
                               </StackPanel>

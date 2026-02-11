@@ -46,9 +46,10 @@
                     <Button Classes="TitleBarButton"
                             ToolTip.Tip="Menu">
                          <svg:Svg Path="avares://Diffy/Assets/Icons/menu.svg"
-                                Width="18"
-                                Height="18"
-                                VerticalAlignment="Center"/>
+                                 Width="18"
+                                 Height="18"
+                                 Css="{DynamicResource SvgColor}"
+                                 VerticalAlignment="Center"/>
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedLeft">
                                 <MenuItem Header="_Open Repository..." 
@@ -81,12 +82,13 @@
                                     </MenuItem>
                                     <MenuItem Header="_Register Folder Context Menu" Command="{Binding ToggleContextMenuCommand}">
                                         <MenuItem.Icon>
-                                             <svg:Svg Path="avares://Diffy/Assets/Icons/checkmark.svg"
-                                                     IsVisible="{Binding IsContextMenuRegistered}"
-                                                     Width="16"
-                                                     Height="16"
-                                                     HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center"/>
+                             <svg:Svg Path="avares://Diffy/Assets/Icons/checkmark.svg"
+                                      IsVisible="{Binding IsContextMenuRegistered}"
+                                      Width="16"
+                                      Height="16"
+                                      Css="{DynamicResource SvgColor}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </MenuItem>
@@ -192,9 +194,10 @@
                         IsVisible="{Binding Repositories.Count}">
                     <StackPanel Orientation="Horizontal" Spacing="6" Margin="8,0">
                          <svg:Svg Path="avares://Diffy/Assets/Icons/history.svg"
-                                Width="16"
-                                Height="16"
-                                VerticalAlignment="Center"/>
+                                  Width="18"
+                                  Height="18"
+                                  Css="{DynamicResource SvgColor}"
+                                  VerticalAlignment="Center"/>
                         <TextBlock Text="History" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
@@ -219,6 +222,7 @@
                                           Path="avares://Diffy/Assets/Icons/warning.svg"
                                          Width="20"
                                          Height="20"
+                                         Css="{DynamicResource SvgColor}"
                                          VerticalAlignment="Center"
                                          Margin="0,0,12,0"/>
                                 <TextBlock Grid.Column="1"

@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              x:Class="Diffy.App.App"
              RequestedThemeVariant="Default">
              
@@ -37,6 +38,9 @@
                     <SolidColorBrush x:Key="NotificationErrorForeground">#D1242F</SolidColorBrush>
                     <SolidColorBrush x:Key="NotificationErrorBorder">#F44336</SolidColorBrush>
                     <SolidColorBrush x:Key="NotificationDismissHover">#FFE0E0</SolidColorBrush>
+                    
+                    <!-- SVG Icon Color -->
+                    <x:String x:Key="SvgColor">* { color: #000000; }</x:String>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="WindowBackground">#1E1E1E</SolidColorBrush>
@@ -69,6 +73,9 @@
                     <SolidColorBrush x:Key="NotificationErrorForeground">#F44336</SolidColorBrush>
                     <SolidColorBrush x:Key="NotificationErrorBorder">#8B0000</SolidColorBrush>
                     <SolidColorBrush x:Key="NotificationDismissHover">#3D2525</SolidColorBrush>
+                    
+                    <!-- SVG Icon Color -->
+                    <x:String x:Key="SvgColor">* { color: #CCCCCC; }</x:String>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
@@ -305,6 +312,11 @@
         </Style>
         <Style Selector="DataGridCell Button /template/ ContentPresenter">
             <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- SVG Icon Color Inheritance -->
+        <Style Selector="svg|Svg">
+            <Setter Property="Css" Value="{DynamicResource SvgColor}"/>
         </Style>
     </Application.Styles>
 </Application>
