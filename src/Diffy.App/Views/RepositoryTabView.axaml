@@ -237,7 +237,7 @@
                                    <Button Command="{Binding Diff.ToggleFullContentCommand}"
                                             ToolTip.Tip="Toggle Full Content"
                                             Classes="Subtle"
-                                            Classes.ToggleActive="{Binding !Diff.ShowFullContent}">
+                                            Classes.ToggleActive="{Binding Diff.ShowFullContent}">
                                         <svg:Svg Path="avares://Diffy/Assets/Icons/expand-content.svg"
                                                 Width="14"
                                                 Height="14"

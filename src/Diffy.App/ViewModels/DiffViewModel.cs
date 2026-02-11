@@ -19,6 +19,7 @@ public class DiffViewModel : ViewModelBase, IDisposable
     private readonly string _repositoryPath;
     private readonly IGitRepository _repository;
     private CancellationTokenSource? _loadDiffCts;
+    private Task? _progressiveHighlightingTask;
 
     private const int LargeFileThreshold = 500;
 
@@ -106,6 +107,8 @@ public class DiffViewModel : ViewModelBase, IDisposable
                     : _diffService.GenerateDiffWithContext(oldContent, newContent, file.Path, IgnoreWhitespace, 5),
                 ct);
 
+            ct.ThrowIfCancellationRequested();
+
             // Use progressive highlighting for large files
             var totalLines = diffResult.InlineLines.Count;
             var isLargeFile = totalLines > LargeFileThreshold;
@@ -113,30 +116,62 @@ public class DiffViewModel : ViewModelBase, IDisposable
             if (isLargeFile)
             {
                 // For large files, use viewport-based progressive highlighting
-                _ = Task.Run(async () =>
+                // Track the task so we can ensure it completes or is cancelled properly
+                _progressiveHighlightingTask = Task.Run(async () =>
                 {
-                    await _syntaxHighlightingService.HighlightFileDiffProgressiveAsync(
-                        diffResult,
-                        oldContent,
-                        newContent,
-                        HighlightingSearchQuery,
-                        0,
-                        Math.Min(200, totalLines - 1),
-                        OnHighlightChunkComplete,
-                        ct);
+                    try
+                    {
+                        await _syntaxHighlightingService.HighlightFileDiffProgressiveAsync(
+                            diffResult,
+                            oldContent,
+                            newContent,
+                            HighlightingSearchQuery,
+                            0,
+                            Math.Min(200, totalLines - 1),
+                            OnHighlightChunkComplete,
+                            ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when user switches files quickly - silently ignore
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't crash - user can still see unhighlighted diff
+                        System.Diagnostics.Debug.WriteLine($"Progressive highlighting failed: {ex.Message}");
+                    }
                 }, ct);
+                
+                // Set CurrentDiff immediately so user sees content while highlighting progresses
+                if (!ct.IsCancellationRequested)
+                    CurrentDiff = diffResult;
             }
             else
             {
-                // For smaller files, highlight all at once
-                await _syntaxHighlightingService.HighlightFileDiffAsync(diffResult, oldContent, newContent, HighlightingSearchQuery);
-            }
+                // For smaller files, await highlighting completion before showing diff
+                try
+                {
+                    await _syntaxHighlightingService.HighlightFileDiffAsync(diffResult, oldContent, newContent, HighlightingSearchQuery);
+                }
+                catch (Exception ex)
+                {
+                    // Log but don't crash - user can still see unhighlighted diff
+                    System.Diagnostics.Debug.WriteLine($"Syntax highlighting failed: {ex.Message}");
+                }
 
-            if (!ct.IsCancellationRequested)
-                CurrentDiff = diffResult;
+                if (!ct.IsCancellationRequested)
+                    CurrentDiff = diffResult;
+            }
         }
         catch (OperationCanceledException)
         {
+            // Expected when user switches files quickly
+        }
+        catch (Exception ex)
+        {
+            // Log unexpected errors
+            System.Diagnostics.Debug.WriteLine($"LoadDiffAsync failed: {ex.Message}");
+            // Could set an error state here if needed
         }
         finally
         {
@@ -150,13 +185,30 @@ public class DiffViewModel : ViewModelBase, IDisposable
     {
         // Notify that a chunk of lines has been highlighted
         // This triggers UI update for the affected lines
-        if (CurrentDiff != null && chunkStart < CurrentDiff.InlineLines.Count)
+        try
         {
-            for (int i = chunkStart; i <= chunkEnd && i < CurrentDiff.InlineLines.Count; i++)
+            if (CurrentDiff == null)
+                return;
+                
+            if (chunkStart < 0 || chunkStart >= CurrentDiff.InlineLines.Count)
+                return;
+                
+            // Clamp chunkEnd to valid range
+            var safeChunkEnd = Math.Min(chunkEnd, CurrentDiff.InlineLines.Count - 1);
+            
+            for (int i = chunkStart; i <= safeChunkEnd; i++)
             {
                 var line = CurrentDiff.InlineLines[i];
-                line.RaisePropertyChanged("Highlights");
+                if (line != null)
+                {
+                    line.RaisePropertyChanged("Highlights");
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            // Log but don't crash - highlighting update failure is non-critical
+            System.Diagnostics.Debug.WriteLine($"OnHighlightChunkComplete failed: {ex.Message}");
         }
     }
 

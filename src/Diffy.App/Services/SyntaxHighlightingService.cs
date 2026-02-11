@@ -21,10 +21,22 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
     private readonly ConcurrentDictionary<string, Dictionary<int, List<HighlightedSegment>>> _highlightCache = new();
     private const int MaxCacheSize = 100;
     private const int ProgressiveHighlightingChunkSize = 100;
+    private ThemeName? _lastThemeName;
 
     public SyntaxHighlightingService(Diffy.Core.Interfaces.ISettingsService settingsService)
     {
         _settingsService = settingsService;
+        
+        // Subscribe to theme changes to clear registry cache
+        _settingsService.ThemeChanged += OnThemeChanged;
+    }
+    
+    private void OnThemeChanged()
+    {
+        // Clear registry cache when theme changes to force reload with new theme colors
+        _registries.Clear();
+        _highlightCache.Clear();
+        _lastThemeName = null;
     }
 
     private RegistryOptions GetRegistryOptions()
@@ -46,6 +58,14 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
             var actual = Avalonia.Application.Current?.ActualThemeVariant;
             themeName = actual == Avalonia.Styling.ThemeVariant.Light ? ThemeName.LightPlus : ThemeName.DarkPlus;
         }
+        
+        // If theme changed since last call, clear caches
+        if (_lastThemeName.HasValue && _lastThemeName.Value != themeName)
+        {
+            _registries.Clear();
+            _highlightCache.Clear();
+        }
+        _lastThemeName = themeName;
 
         return _registries.GetOrAdd(themeName, name => new RegistryOptions(name));
     }
@@ -65,39 +85,54 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         Action<int, int>? onChunkComplete = null,
         CancellationToken cancellationToken = default)
     {
-        var registryOptions = GetRegistryOptions();
-        var extension = Path.GetExtension(diff.FilePath).ToLower();
-        var scope = registryOptions.GetScopeByExtension(extension);
-
-        // Tokenize all lines (not selective) to support side-by-side view which shows entire file
-        // Note: GetHighlights tokenizes the entire content, which is needed because
-        // DiffPlex's SideBySideDiffBuilder includes all lines, not just changed hunks
-        var oldTask = Task.Run(() => GetHighlights(oldContent, scope, registryOptions), cancellationToken);
-        var newTask = Task.Run(() => GetHighlights(newContent, scope, registryOptions), cancellationToken);
-
-        await Task.WhenAll(oldTask, newTask);
-
-        var oldHighlights = oldTask.Result;
-        var newHighlights = newTask.Result;
-
-        // Apply search highlighting manually after syntax highlighting
-        if (!string.IsNullOrEmpty(searchQuery))
+        try
         {
-            ApplySearchHighlighting(oldHighlights, oldContent, searchQuery);
-            ApplySearchHighlighting(newHighlights, newContent, searchQuery);
+            var registryOptions = GetRegistryOptions();
+            var extension = Path.GetExtension(diff.FilePath).ToLower();
+            var scope = registryOptions.GetScopeByExtension(extension);
+
+            // Tokenize all lines (not selective) to support side-by-side view which shows entire file
+            // Note: GetHighlights tokenizes the entire content, which is needed because
+            // DiffPlex's SideBySideDiffBuilder includes all lines, not just changed hunks
+            var oldTask = Task.Run(() => GetHighlights(oldContent, scope, registryOptions), cancellationToken);
+            var newTask = Task.Run(() => GetHighlights(newContent, scope, registryOptions), cancellationToken);
+
+            await Task.WhenAll(oldTask, newTask);
+
+            var oldHighlights = oldTask.Result;
+            var newHighlights = newTask.Result;
+
+            // Apply search highlighting manually after syntax highlighting
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                ApplySearchHighlighting(oldHighlights, oldContent, searchQuery);
+                ApplySearchHighlighting(newHighlights, newContent, searchQuery);
+            }
+
+            // Determine visible line range
+            var visibleStart = viewportStart ?? 0;
+            var visibleEnd = viewportEnd ?? Math.Max(diff.InlineLines.Count - 1, 0);
+
+            // Process in two phases: visible first, then background
+            await ProcessVisibleLinesAsync(diff, oldHighlights, newHighlights, visibleStart, visibleEnd, cancellationToken);
+
+            // Process remaining lines in background if viewport was specified
+            if (viewportStart.HasValue && viewportEnd.HasValue)
+            {
+                _ = Task.Run(() => ProcessRemainingLinesAsync(diff, oldHighlights, newHighlights, visibleStart, visibleEnd, onChunkComplete, cancellationToken), cancellationToken);
+            }
         }
-
-        // Determine visible line range
-        var visibleStart = viewportStart ?? 0;
-        var visibleEnd = viewportEnd ?? Math.Max(diff.InlineLines.Count - 1, 0);
-
-        // Process in two phases: visible first, then background
-        await ProcessVisibleLinesAsync(diff, oldHighlights, newHighlights, visibleStart, visibleEnd, cancellationToken);
-
-        // Process remaining lines in background if viewport was specified
-        if (viewportStart.HasValue && viewportEnd.HasValue)
+        catch (OperationCanceledException)
         {
-            _ = Task.Run(() => ProcessRemainingLinesAsync(diff, oldHighlights, newHighlights, visibleStart, visibleEnd, onChunkComplete, cancellationToken), cancellationToken);
+            // Expected during rapid file switching - rethrow to let caller handle
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Log unexpected errors but don't crash - caller will show unhighlighted diff
+            System.Diagnostics.Debug.WriteLine($"Syntax highlighting failed for {diff.FilePath}: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            // Don't rethrow - allow diff to display without highlighting
         }
     }
 

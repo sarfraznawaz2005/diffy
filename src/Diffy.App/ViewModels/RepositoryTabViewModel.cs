@@ -154,7 +154,9 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
                 Diff.HighlightingSearchQuery = query;
                 ApplyFilter();
             });
+            
         Diff.WhenAnyValue(x => x.IgnoreWhitespace)
+            .Skip(1) // Skip initial value to prevent reload on startup
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async _ =>
             {
