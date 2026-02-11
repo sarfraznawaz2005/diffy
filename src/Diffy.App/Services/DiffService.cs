@@ -336,7 +336,7 @@ public class DiffService : IDiffService
 
         // Second pass: identify changes and include surrounding context
         var includedLines = new HashSet<int>();
-        
+
         // Find all changed lines in BOTH old and new lines
         for (int i = 0; i < allOldLines.Count; i++)
         {
@@ -349,7 +349,7 @@ public class DiffService : IDiffService
                 }
             }
         }
-        
+
         // Also check new lines for additions (in case old line was placeholder)
         for (int i = 0; i < allNewLines.Count; i++)
         {

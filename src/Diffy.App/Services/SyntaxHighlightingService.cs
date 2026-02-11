@@ -26,11 +26,11 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
     public SyntaxHighlightingService(Diffy.Core.Interfaces.ISettingsService settingsService)
     {
         _settingsService = settingsService;
-        
+
         // Subscribe to theme changes to clear registry cache
         _settingsService.ThemeChanged += OnThemeChanged;
     }
-    
+
     private void OnThemeChanged()
     {
         // Clear registry cache when theme changes to force reload with new theme colors
@@ -52,7 +52,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         {
             themeName = ThemeName.DarkPlus;
         }
-        
+
         // If theme changed since last call, clear caches
         // Note: Always clear on first call when _lastThemeName is null
         if (!_lastThemeName.HasValue || _lastThemeName.Value != themeName)
@@ -193,7 +193,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         }
 
         // Process lines after viewport
-        for (int i = visibleEnd +1; i < totalLines; i += chunkSize)
+        for (int i = visibleEnd + 1; i < totalLines; i += chunkSize)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -324,10 +324,10 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         var newSegments = new List<HighlightedSegment>();
         var pointList = points.ToList();
 
-        for (int i = 0; i < pointList.Count -1; i++)
+        for (int i = 0; i < pointList.Count - 1; i++)
         {
             int start = pointList[i];
-            int end = pointList[i +1];
+            int end = pointList[i + 1];
             if (start >= end) continue;
 
             // Check if this range is covered by a search highlight
@@ -416,10 +416,10 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         var merged = new List<HighlightedSegment>();
         var pointList = points.ToList();
 
-        for (int i = 0; i < pointList.Count -1; i++)
+        for (int i = 0; i < pointList.Count - 1; i++)
         {
             int start = pointList[i];
-            int end = pointList[i +1];
+            int end = pointList[i + 1];
             if (start >= end) continue;
 
             // Query both trees for overlapping intervals
@@ -666,7 +666,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
         var currentStart = sortedLines[0];
         var currentEnd = sortedLines[0];
 
-        for (int i =1; i < sortedLines.Count; i++)
+        for (int i = 1; i < sortedLines.Count; i++)
         {
             if (sortedLines[i] == currentEnd + 1)
             {

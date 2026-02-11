@@ -102,7 +102,7 @@ public class DiffViewModel : ViewModelBase, IDisposable
             ct.ThrowIfCancellationRequested();
 
             var diffResult = await Task.Run(() =>
-                ShowFullContent 
+                ShowFullContent
                     ? _diffService.GenerateDiff(oldContent, newContent, file.Path, IgnoreWhitespace)
                     : _diffService.GenerateDiffWithContext(oldContent, newContent, file.Path, IgnoreWhitespace, 5),
                 ct);
@@ -141,7 +141,7 @@ public class DiffViewModel : ViewModelBase, IDisposable
                         System.Diagnostics.Debug.WriteLine($"Progressive highlighting failed: {ex.Message}");
                     }
                 }, ct);
-                
+
                 // Set CurrentDiff immediately so user sees content while highlighting progresses
                 if (!ct.IsCancellationRequested)
                     CurrentDiff = diffResult;
@@ -189,13 +189,13 @@ public class DiffViewModel : ViewModelBase, IDisposable
         {
             if (CurrentDiff == null)
                 return;
-                
+
             if (chunkStart < 0 || chunkStart >= CurrentDiff.InlineLines.Count)
                 return;
-                
+
             // Clamp chunkEnd to valid range
             var safeChunkEnd = Math.Min(chunkEnd, CurrentDiff.InlineLines.Count - 1);
-            
+
             for (int i = chunkStart; i <= safeChunkEnd; i++)
             {
                 var line = CurrentDiff.InlineLines[i];
