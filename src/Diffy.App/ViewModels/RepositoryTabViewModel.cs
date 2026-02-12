@@ -460,8 +460,12 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     private async Task ToggleHistoryAsync()
     {
         IsHistoryMode = !IsHistoryMode;
-        if (IsHistoryMode && History.Commits.Count == 0)
+        
+        // Always reload commits when entering history mode to show latest changes
+        if (IsHistoryMode)
         {
+            // Clear existing commits and reload fresh from git
+            History.Commits.Clear();
             await History.LoadMoreCommitsAsync();
         }
     }
