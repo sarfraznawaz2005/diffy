@@ -199,7 +199,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             .Subscribe(autoSelect =>
             {
                 _settingsService.SetAutoSelectLatestFile(autoSelect);
-                
+
                 // Auto-select first file when checkbox is turned on
                 if (autoSelect && FilteredFiles.Count > 0)
                 {
@@ -373,7 +373,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
         // Apply filter synchronously to avoid race condition with selection
         ApplyFilterInternal();
-        
+
         // Now set selection after filter is complete
         // Auto-select latest file if enabled and files exist
         if (AutoSelectLatestFile && FilteredFiles.Count > 0)
@@ -500,7 +500,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     private async Task ToggleHistoryAsync()
     {
         IsHistoryMode = !IsHistoryMode;
-        
+
         // Always reload commits when entering history mode to show latest changes
         if (IsHistoryMode)
         {
