@@ -98,13 +98,26 @@
             <!-- File List Panel -->
             <Border Grid.Column="0" Background="{DynamicResource WindowBackground}" Padding="0">
                 <DockPanel>
-                    <!-- File Count Header -->
-                    <Border DockPanel.Dock="Top" Padding="12,0,0,0" MinHeight="40" Background="{DynamicResource SurfaceBackground}">
-                        <TextBlock Text="{Binding FilteredFiles.Count, StringFormat='Changed Files: {0}'}"
-                                   FontSize="11"
-                                   FontWeight="SemiBold"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextSecondary}"/>
+                    <!-- File Count Header with Auto Select Checkbox -->
+                    <Border DockPanel.Dock="Top" Padding="12,0,12,0" MinHeight="40" Background="{DynamicResource SurfaceBackground}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0"
+                                      Content="Auto Select Latest File"
+                                      IsChecked="{Binding AutoSelectLatestFile}"
+                                      VerticalAlignment="Center"
+                                      Foreground="{DynamicResource TextSecondary}"
+                                      FontSize="11"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding FilteredFiles.Count, StringFormat='Changed Files: {0}'}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondary}"/>
+                        </Grid>
                     </Border>
 
                     <!-- Search Toolbar -->

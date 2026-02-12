@@ -88,6 +88,16 @@ public interface ISettingsService
     /// </summary>
     void SetLastActiveRepository(string? path);
 
+    /// <summary>
+    /// Gets whether to automatically select the latest changed file.
+    /// </summary>
+    bool GetAutoSelectLatestFile();
+
+    /// <summary>
+    /// Sets whether to automatically select the latest changed file.
+    /// </summary>
+    void SetAutoSelectLatestFile(bool autoSelect);
+
 }
 
 /// <summary>

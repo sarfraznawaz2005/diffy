@@ -203,8 +203,18 @@ public class SettingsService : ISettingsService
         }
     }
 
+    public bool GetAutoSelectLatestFile()
+    {
+        EnsureGlobalSettingsLoaded();
+        return _globalSettings!.AutoSelectLatestFile;
+    }
 
-
+    public void SetAutoSelectLatestFile(bool autoSelect)
+    {
+        EnsureGlobalSettingsLoaded();
+        _globalSettings!.AutoSelectLatestFile = autoSelect;
+        SaveGlobalSettings();
+    }
 
     private void EnsureGlobalSettingsLoaded()
     {
@@ -263,6 +273,7 @@ public class SettingsService : ISettingsService
         public string? LastActiveRepository { get; set; }
         public bool IgnoreWhitespace { get; set; }
         public bool ShowFullContent { get; set; } = false; // Default to hunks only
+        public bool AutoSelectLatestFile { get; set; } = false; // Default to off
     }
 
 }

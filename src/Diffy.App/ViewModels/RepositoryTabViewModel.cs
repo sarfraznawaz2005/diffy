@@ -38,6 +38,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     [Reactive] public bool IsConfirmationVisible { get; set; }
     [Reactive] public string ConfirmationTitle { get; set; } = string.Empty;
     [Reactive] public string ConfirmationMessage { get; set; } = string.Empty;
+    [Reactive] public bool AutoSelectLatestFile { get; set; }
 
     private Func<Task>? _pendingAction;
     private bool _disposed;
@@ -85,6 +86,9 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
             Files = new ObservableCollection<FileStatus>();
             FilteredFiles = new ObservableCollection<FileStatus>();
+
+            // Load settings
+            AutoSelectLatestFile = _settingsService.GetAutoSelectLatestFile();
 
             InitializeCaches();
             InitializeCommands();
@@ -180,6 +184,11 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
         // Forward scroll requests to the View
         Diff.ScrollRequested += (index, mode) => ScrollRequested?.Invoke(index, mode);
+
+        // Save AutoSelectLatestFile setting when changed
+        this.WhenAnyValue(x => x.AutoSelectLatestFile)
+            .Skip(1) // Skip initial value
+            .Subscribe(autoSelect => _settingsService.SetAutoSelectLatestFile(autoSelect));
     }
 
     private void OnThemeChanged()
@@ -345,8 +354,13 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         ApplyFilter();
         this.RaisePropertyChanged(nameof(EmptyStateMessage));
 
-        // Restore selection if possible
-        if (!string.IsNullOrEmpty(selectedPath))
+        // Auto-select latest file if enabled and files exist
+        if (AutoSelectLatestFile && FilteredFiles.Count > 0)
+        {
+            SelectedFile = FilteredFiles[0];
+        }
+        // Otherwise restore selection if possible
+        else if (!string.IsNullOrEmpty(selectedPath))
         {
             var newSelection = FilteredFiles.FirstOrDefault(f => f.Path == selectedPath);
             if (newSelection != null)
