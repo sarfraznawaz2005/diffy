@@ -193,10 +193,20 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         // Forward scroll requests to the View
         Diff.ScrollRequested += (index, mode) => ScrollRequested?.Invoke(index, mode);
 
-        // Save AutoSelectLatestFile setting when changed
+        // Save AutoSelectLatestFile setting when changed and auto-select if enabled
         this.WhenAnyValue(x => x.AutoSelectLatestFile)
             .Skip(1) // Skip initial value
-            .Subscribe(autoSelect => _settingsService.SetAutoSelectLatestFile(autoSelect));
+            .Subscribe(autoSelect =>
+            {
+                _settingsService.SetAutoSelectLatestFile(autoSelect);
+                
+                // Auto-select first file when checkbox is turned on
+                if (autoSelect && FilteredFiles.Count > 0)
+                {
+                    SelectedFile = FilteredFiles[0];
+                    SelectedFileIndex = 0;
+                }
+            });
     }
 
     private void OnThemeChanged()
