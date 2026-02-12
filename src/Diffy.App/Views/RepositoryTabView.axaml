@@ -110,11 +110,12 @@
                                       IsChecked="{Binding AutoSelectLatestFile}"
                                       VerticalAlignment="Center"
                                       Foreground="{DynamicResource TextSecondary}"
-                                      FontSize="11"/>
+                                      FontSize="11"
+                                      FontWeight="SemiBold"/>
                             <TextBlock Grid.Column="1"
-                                       Text="{Binding FilteredFiles.Count, StringFormat='Changed Files: {0}'}"
-                                       FontSize="11"
-                                       FontWeight="SemiBold"
+                                       Text="{Binding FilteredFiles.Count}"
+                                       FontSize="13"
+                                       FontWeight="Bold"
                                        VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextSecondary}"/>
                         </Grid>
@@ -142,8 +143,10 @@
                     </Border>
 
                     <!-- File List -->
-                    <ListBox ItemsSource="{Binding FilteredFiles}"
+                    <ListBox x:Name="FileListBox"
+                             ItemsSource="{Binding FilteredFiles}"
                              SelectedItem="{Binding SelectedFile}"
+                             SelectedIndex="{Binding SelectedFileIndex}"
                              Background="Transparent">
                         <ListBox.ItemTemplate>
                             <DataTemplate>

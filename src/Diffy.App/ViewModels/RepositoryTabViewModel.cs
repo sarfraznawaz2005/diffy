@@ -33,6 +33,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     [Reactive] public string CurrentBranch { get; set; } = string.Empty;
     [Reactive] public bool IsLoading { get; set; }
     [Reactive] public FileStatus? SelectedFile { get; set; }
+    [Reactive] public int SelectedFileIndex { get; set; } = -1;
     [Reactive] public string SearchQuery { get; set; } = string.Empty;
     [Reactive] public bool IsHistoryMode { get; set; }
     [Reactive] public bool IsConfirmationVisible { get; set; }
@@ -143,10 +144,17 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
                 if (file == null)
                 {
                     Diff.CurrentDiff = null;
+                    SelectedFileIndex = -1;
                 }
                 else
                 {
                     await Diff.LoadDiffAsync(file);
+                    // Update index when selection changes from UI
+                    var index = FilteredFiles.IndexOf(file);
+                    if (index >= 0)
+                    {
+                        SelectedFileIndex = index;
+                    }
                 }
             });
 
@@ -156,7 +164,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             .Subscribe(query =>
             {
                 Diff.HighlightingSearchQuery = query;
-                ApplyFilter();
+                ApplyFilterInternal();
             });
 
         Diff.WhenAnyValue(x => x.IgnoreWhitespace)
@@ -351,13 +359,17 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             Files.Add(file);
         }
 
-        ApplyFilter();
         this.RaisePropertyChanged(nameof(EmptyStateMessage));
 
+        // Apply filter synchronously to avoid race condition with selection
+        ApplyFilterInternal();
+        
+        // Now set selection after filter is complete
         // Auto-select latest file if enabled and files exist
         if (AutoSelectLatestFile && FilteredFiles.Count > 0)
         {
             SelectedFile = FilteredFiles[0];
+            SelectedFileIndex = 0;
         }
         // Otherwise restore selection if possible
         else if (!string.IsNullOrEmpty(selectedPath))
@@ -366,15 +378,15 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             if (newSelection != null)
             {
                 SelectedFile = newSelection;
+                SelectedFileIndex = FilteredFiles.IndexOf(newSelection);
             }
         }
     }
 
-    private void ApplyFilter()
+    private void ApplyFilterInternal()
     {
         _filterCts?.Cancel();
         _filterCts = new CancellationTokenSource();
-        var token = _filterCts.Token;
 
         var query = SearchQuery?.Trim();
 
@@ -385,6 +397,8 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // For search queries, we still need async but handle selection differently
+        var token = _filterCts.Token;
         Task.Run(async () =>
         {
             var filtered = await Task.Run(() => PerformSearch(query, token), token);
@@ -403,6 +417,8 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             });
         }, token);
     }
+
+
 
     private async Task<List<FileStatus>> PerformSearch(string query, CancellationToken token)
     {
