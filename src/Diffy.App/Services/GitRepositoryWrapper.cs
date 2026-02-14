@@ -125,7 +125,7 @@ public class GitRepositoryWrapper : IGitRepository
         }
     }
 
-    public string HeadFriendlyName => SafeRun(r => r.Head.FriendlyName);
+    public string HeadFriendlyName => SafeRun(r => r.Head.FriendlyName) ?? string.Empty;
 
     public int BranchCount => SafeRun(r => r.Branches.Count());
 
@@ -137,7 +137,7 @@ public class GitRepositoryWrapper : IGitRepository
         {
             var status = r.RetrieveStatus(new StatusOptions());
             return status.Select(s => new GitStatusEntryWrapper(s)).ToList(); // Materialize under lock
-        });
+        }, Enumerable.Empty<IGitStatusEntry>());
     }
 
     public string ComparePatch(string? treeSha, string filePath)
@@ -157,7 +157,7 @@ public class GitRepositoryWrapper : IGitRepository
                 new[] { filePath });
 
             return patch.Content;
-        });
+        }, string.Empty);
     }
 
     public string GetBlobContent(string filePath, string commitSha)
@@ -173,7 +173,7 @@ public class GitRepositoryWrapper : IGitRepository
 
             var blob = (Blob)treeEntry.Target;
             return blob.GetContentText();
-        });
+        }, string.Empty);
     }
 
     public IEnumerable<IGitCommit> QueryCommits(int skip, int take)
@@ -186,7 +186,7 @@ public class GitRepositoryWrapper : IGitRepository
                 .Take(take)
                 .Select(c => new GitCommitWrapper(c))
                 .ToList(); // Materialize under lock
-        });
+        }, Enumerable.Empty<IGitCommit>());
     }
 
     public IGitCommit? LookupCommit(string sha)
@@ -213,7 +213,7 @@ public class GitRepositoryWrapper : IGitRepository
 
             var changes = r.Diff.Compare<TreeChanges>(parent.Tree, commit.Tree);
             return changes.Select(c => new GitTreeChangeWrapper(c)).ToList(); // Materialize under lock
-        });
+        }, Enumerable.Empty<IGitTreeChange>());
     }
 
     public void CheckoutPaths(string branchName, string[] paths)
