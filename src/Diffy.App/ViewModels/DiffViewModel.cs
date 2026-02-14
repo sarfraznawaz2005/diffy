@@ -43,11 +43,28 @@ public class DiffViewModel : ViewModelBase, IDisposable
         ShowFullContent = _settingsService.GetShowFullContent();
 
         ToggleModeCommand = ReactiveCommand.Create(ToggleMode);
+        ToggleModeCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ToggleModeCommand Exception: {ex.Message}", nameof(DiffViewModel)));
+
         ToggleIgnoreWhitespaceCommand = ReactiveCommand.Create(ToggleIgnoreWhitespace);
+        ToggleIgnoreWhitespaceCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ToggleIgnoreWhitespaceCommand Exception: {ex.Message}", nameof(DiffViewModel)));
+
         ToggleFullContentCommand = ReactiveCommand.Create(ToggleFullContent);
+        ToggleFullContentCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ToggleFullContentCommand Exception: {ex.Message}", nameof(DiffViewModel)));
+
         JumpToNextChangeCommand = ReactiveCommand.Create(() => JumpToChange(1));
+        JumpToNextChangeCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"JumpToNextChangeCommand Exception: {ex.Message}", nameof(DiffViewModel)));
+
         JumpToPreviousChangeCommand = ReactiveCommand.Create(() => JumpToChange(-1));
+        JumpToPreviousChangeCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"JumpToPreviousChangeCommand Exception: {ex.Message}", nameof(DiffViewModel)));
+
         CopyFullDiffCommand = ReactiveCommand.CreateFromTask(CopyFullDiffAsync);
+        CopyFullDiffCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"CopyFullDiffCommand Exception: {ex.Message}", nameof(DiffViewModel)));
     }
 
     [Reactive] public FileDiff? CurrentDiff { get; set; }
@@ -310,19 +327,23 @@ public class DiffViewModel : ViewModelBase, IDisposable
 
     private async Task CopyFullDiffAsync()
     {
-        if (CurrentDiff != null && Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (CurrentDiff == null) return;
+
+        try
         {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.Clipboard != null)
+            var sb = new System.Text.StringBuilder();
+            foreach (var line in CurrentDiff.InlineLines)
             {
-                var sb = new System.Text.StringBuilder();
-                foreach (var line in CurrentDiff.InlineLines)
-                {
-                    if (line.Kind != DiffLineKind.Placeholder)
-                        sb.AppendLine(line.Content);
-                }
-                await topLevel.Clipboard.SetTextAsync(sb.ToString());
+                if (line.Kind != DiffLineKind.Placeholder)
+                    sb.AppendLine(line.Content);
             }
+
+            var diffText = sb.ToString();
+            await TextCopy.ClipboardService.SetTextAsync(diffText);
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"CopyFullDiff Exception: {ex}", nameof(DiffViewModel));
         }
     }
 

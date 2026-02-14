@@ -85,11 +85,24 @@ public class GitRepositoryWrapper : IGitRepository
         _onDispose = onDispose;
     }
 
-    private T SafeRun<T>(Func<Repository, T> action)
+    private T SafeRun<T>(Func<Repository, T> action, T defaultValue = default!)
     {
         lock (_lock)
         {
-            return action(_repo);
+            try
+            {
+                return action(_repo);
+            }
+            catch (LibGit2Sharp.LibGit2SharpException ex)
+            {
+                Program.Log($"LibGit2Sharp Exception in SafeRun: {ex.Message}", nameof(GitRepositoryWrapper));
+                return defaultValue;
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"Exception in SafeRun: {ex.Message}", nameof(GitRepositoryWrapper));
+                return defaultValue;
+            }
         }
     }
 
@@ -97,7 +110,18 @@ public class GitRepositoryWrapper : IGitRepository
     {
         lock (_lock)
         {
-            action(_repo);
+            try
+            {
+                action(_repo);
+            }
+            catch (LibGit2Sharp.LibGit2SharpException ex)
+            {
+                Program.Log($"LibGit2Sharp Exception in SafeRun: {ex.Message}", nameof(GitRepositoryWrapper));
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"Exception in SafeRun: {ex.Message}", nameof(GitRepositoryWrapper));
+            }
         }
     }
 

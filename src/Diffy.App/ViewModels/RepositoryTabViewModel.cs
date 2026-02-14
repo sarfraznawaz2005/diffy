@@ -122,15 +122,44 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         var hasFileSelected = this.WhenAnyValue(x => x.SelectedFile).Select(file => file != null);
 
         RefreshCommand = ReactiveCommand.CreateFromTask(RefreshAsync);
+        RefreshCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"RefreshCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         OpenFileCommand = ReactiveCommand.CreateFromTask<FileStatus>(async f => await OpenFileAsync(f), hasFileSelected);
+        OpenFileCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"OpenFileCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         RevertFileCommand = ReactiveCommand.Create<FileStatus>(f => _ = RevertFileAsync(f), hasFileSelected);
+        RevertFileCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"RevertFileCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         DeleteFileCommand = ReactiveCommand.Create<FileStatus>(f => _ = DeleteFileAsync(f), hasFileSelected);
+        DeleteFileCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"DeleteFileCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         CopyFileContentCommand = ReactiveCommand.CreateFromTask(CopyFileContentAsync, hasFileSelected);
+        CopyFileContentCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"CopyFileContentCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         ClearSearchCommand = ReactiveCommand.Create(ClearSearch);
+        ClearSearchCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ClearSearchCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         ToggleHistoryCommand = ReactiveCommand.CreateFromTask(ToggleHistoryAsync);
+        ToggleHistoryCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ToggleHistoryCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         CopyPathCommand = ReactiveCommand.CreateFromTask(CopyPathAsync, hasFileSelected);
+        CopyPathCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"CopyPathCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         ConfirmActionCommand = ReactiveCommand.CreateFromTask(async () => await ConfirmActionAsync());
+        ConfirmActionCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ConfirmActionCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
+
         CancelConfirmationCommand = ReactiveCommand.Create(() => { IsConfirmationVisible = false; });
+        CancelConfirmationCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"CancelConfirmationCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
     }
 
     private void InitializeSubscriptions()
@@ -332,14 +361,14 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     {
         if (SelectedFile == null) return;
 
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        try
         {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.Clipboard != null)
-            {
-                var content = await _gitService.GetFileContentAsync(RepositoryPath, SelectedFile.Path);
-                await topLevel.Clipboard.SetTextAsync(content);
-            }
+            var content = await _gitService.GetFileContentAsync(RepositoryPath, SelectedFile.Path);
+            await TextCopy.ClipboardService.SetTextAsync(content);
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"CopyFileContent Exception: {ex}", nameof(RepositoryTabViewModel));
         }
     }
 
@@ -347,13 +376,13 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     {
         if (SelectedFile == null) return;
 
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        try
         {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel?.Clipboard != null)
-            {
-                await topLevel.Clipboard.SetTextAsync(SelectedFile.Path);
-            }
+            await TextCopy.ClipboardService.SetTextAsync(SelectedFile.Path);
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"CopyPath Exception: {ex}", nameof(RepositoryTabViewModel));
         }
     }
 

@@ -65,21 +65,52 @@ public class MainWindowViewModel : ViewModelBase
 
         // Commands
         AddRepositoryCommand = ReactiveCommand.CreateFromTask<IStorageProvider?>(AddRepositoryAsync);
+        AddRepositoryCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"AddRepositoryCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         CloseTabCommand = ReactiveCommand.Create<RepositoryTabViewModel>(CloseTab);
+        CloseTabCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"CloseTabCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         OpenRecentCommand = ReactiveCommand.CreateFromTask<string>(OpenRecentRepositoryAsync);
+        OpenRecentCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"OpenRecentCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         ExitCommand = ReactiveCommand.Create(Exit);
+        ExitCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ExitCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         RefreshCurrentTabCommand = ReactiveCommand.CreateFromTask(RefreshCurrentTabAsync);
+        RefreshCurrentTabCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"RefreshCurrentTabCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         ToggleContextMenuCommand = ReactiveCommand.Create(ToggleContextMenu);
+        ToggleContextMenuCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ToggleContextMenuCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         DismissErrorCommand = ReactiveCommand.Create(() => { ErrorMessage = null; });
+        DismissErrorCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"DismissErrorCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         ToggleHistoryCommand = ReactiveCommand.CreateFromTask(ToggleHistoryAsync);
+        ToggleHistoryCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ToggleHistoryCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         JumpToNextChangeCommand = ReactiveCommand.CreateFromTask(JumpToNextChangeAsync);
+        JumpToNextChangeCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"JumpToNextChangeCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
         JumpToPreviousChangeCommand = ReactiveCommand.CreateFromTask(JumpToPreviousChangeAsync);
+        JumpToPreviousChangeCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"JumpToPreviousChangeCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
 
         var canTrust = this.WhenAnyValue(
             x => x.PendingTrustPath,
             path => !string.IsNullOrEmpty(path));
 
         TrustAndRetryCommand = ReactiveCommand.CreateFromTask(TrustAndRetryAsync, canTrust);
+        TrustAndRetryCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"TrustAndRetryCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
 
         // Track last active repository when tab selection changes
         this.WhenAnyValue(x => x.SelectedTabIndex)
@@ -95,7 +126,7 @@ public class MainWindowViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error tracking active repository: {ex.Message}");
+                    Program.Log($"Error tracking active repository: {ex.Message}", nameof(MainWindowViewModel));
                 }
             });
     }

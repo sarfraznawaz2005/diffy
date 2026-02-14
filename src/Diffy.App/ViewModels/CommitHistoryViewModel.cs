@@ -22,9 +22,16 @@ public class CommitHistoryViewModel : ViewModelBase
 
         LoadMoreCommitsCommand = ReactiveCommand.CreateFromTask(LoadMoreCommitsAsync,
             this.WhenAnyValue(x => x.CanLoadMoreCommits, x => x.IsLoading, (can, loading) => can && !loading));
+        LoadMoreCommitsCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"LoadMoreCommitsCommand Exception: {ex.Message}", nameof(CommitHistoryViewModel)));
 
         ViewCommitFilesCommand = ReactiveCommand.CreateFromTask<CommitInfo>(async c => await ViewCommitFilesAsync(c));
+        ViewCommitFilesCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"ViewCommitFilesCommand Exception: {ex.Message}", nameof(CommitHistoryViewModel)));
+
         CloseCommitFilesCommand = ReactiveCommand.Create(() => { IsCommitFilesVisible = false; });
+        CloseCommitFilesCommand.ThrownExceptions.Subscribe(ex =>
+            Program.Log($"CloseCommitFilesCommand Exception: {ex.Message}", nameof(CommitHistoryViewModel)));
 
         this.WhenAnyValue(x => x.SearchQuery)
             .Throttle(TimeSpan.FromMilliseconds(200))
@@ -37,7 +44,7 @@ public class CommitHistoryViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error applying commit filter: {ex.Message}");
+                    Program.Log($"Error applying commit filter: {ex.Message}", nameof(CommitHistoryViewModel));
                 }
             });
     }

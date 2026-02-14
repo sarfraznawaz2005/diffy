@@ -139,6 +139,11 @@ public class GitService : IGitService
 
                 return repo.GetBlobContent(filePath, headCommit.Sha);
             }
+            catch (Exception ex)
+            {
+                Program.Log($"GetFileContentAtHeadAsync Exception: {ex.Message}", nameof(GitService));
+                return string.Empty;
+            }
             finally
             {
                 if (shouldDispose)

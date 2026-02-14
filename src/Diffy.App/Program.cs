@@ -70,6 +70,25 @@ class Program
         }
     }
 
+    /// <summary>
+    /// Logs a message to the errorlog.txt file. Thread-safe.
+    /// </summary>
+    public static void Log(string message, string source = "DEBUG")
+    {
+        try
+        {
+            var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "errorlog.txt");
+            var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}] {message}\n" +
+                           new string('-', 80) + "\n\n";
+
+            System.IO.File.AppendAllText(logPath, logMessage);
+        }
+        catch
+        {
+            // Fail silently if we can't write log
+        }
+    }
+
     private static System.IO.FileStream? CreateSingleInstanceLock(string lockFilePath)
     {
         try
