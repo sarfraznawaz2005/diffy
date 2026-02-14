@@ -139,22 +139,29 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         this.WhenAnyValue(x => x.SelectedFile)
             .Throttle(TimeSpan.FromMilliseconds(100))
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async file =>
+            .Subscribe(file =>
             {
-                if (file == null)
+                try
                 {
-                    Diff.CurrentDiff = null;
-                    SelectedFileIndex = -1;
-                }
-                else
-                {
-                    await Diff.LoadDiffAsync(file);
-                    // Update index when selection changes from UI
-                    var index = FilteredFiles.IndexOf(file);
-                    if (index >= 0)
+                    if (file == null)
                     {
-                        SelectedFileIndex = index;
+                        Diff.CurrentDiff = null;
+                        SelectedFileIndex = -1;
                     }
+                    else
+                    {
+                        _ = Diff.LoadDiffAsync(file);
+                        // Update index when selection changes from UI
+                        var index = FilteredFiles.IndexOf(file);
+                        if (index >= 0)
+                        {
+                            SelectedFileIndex = index;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading file diff: {ex.Message}");
                 }
             });
 
@@ -163,8 +170,15 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(query =>
             {
-                Diff.HighlightingSearchQuery = query;
-                ApplyFilterInternal();
+                try
+                {
+                    Diff.HighlightingSearchQuery = query;
+                    ApplyFilterInternal();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error applying search filter: {ex.Message}");
+                }
             });
 
         Diff.WhenAnyValue(x => x.IgnoreWhitespace)
@@ -172,9 +186,16 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async _ =>
             {
-                if (SelectedFile != null)
+                try
                 {
-                    await Diff.LoadDiffAsync(SelectedFile);
+                    if (SelectedFile != null)
+                    {
+                        await Diff.LoadDiffAsync(SelectedFile);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error reloading diff with whitespace toggle: {ex.Message}");
                 }
             });
 
@@ -184,9 +205,16 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(async _ =>
             {
-                if (SelectedFile != null)
+                try
                 {
-                    await Diff.LoadDiffAsync(SelectedFile);
+                    if (SelectedFile != null)
+                    {
+                        await Diff.LoadDiffAsync(SelectedFile);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error reloading diff with full content toggle: {ex.Message}");
                 }
             });
 
@@ -198,13 +226,20 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
             .Skip(1) // Skip initial value
             .Subscribe(autoSelect =>
             {
-                _settingsService.SetAutoSelectLatestFile(autoSelect);
-
-                // Auto-select first file when checkbox is turned on
-                if (autoSelect && FilteredFiles.Count > 0)
+                try
                 {
-                    SelectedFile = FilteredFiles[0];
-                    SelectedFileIndex = 0;
+                    _settingsService.SetAutoSelectLatestFile(autoSelect);
+
+                    // Auto-select first file when checkbox is turned on
+                    if (autoSelect && FilteredFiles.Count > 0)
+                    {
+                        SelectedFile = FilteredFiles[0];
+                        SelectedFileIndex = 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error handling auto-select: {ex.Message}");
                 }
             });
     }

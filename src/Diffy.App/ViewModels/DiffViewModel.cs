@@ -91,13 +91,28 @@ public class DiffViewModel : ViewModelBase, IDisposable
 
             var ct = cts.Token;
 
-            var oldTask = _gitService.GetFileContentAtHeadAsync(_repositoryPath, file.Path, _repository, ct);
-            var newTask = _gitService.GetFileContentAsync(_repositoryPath, file.Path, ct);
+            string? oldContent = null;
+            string? newContent = null;
 
-            await Task.WhenAll(oldTask, newTask);
+            try
+            {
+                oldContent = await _gitService.GetFileContentAtHeadAsync(_repositoryPath, file.Path, _repository, ct);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error reading old content: {ex.Message}");
+                oldContent = string.Empty;
+            }
 
-            var oldContent = await oldTask;
-            var newContent = await newTask;
+            try
+            {
+                newContent = await _gitService.GetFileContentAsync(_repositoryPath, file.Path, ct);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error reading new content: {ex.Message}");
+                newContent = string.Empty;
+            }
 
             ct.ThrowIfCancellationRequested();
 

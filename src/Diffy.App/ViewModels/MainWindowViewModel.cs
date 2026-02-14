@@ -85,10 +85,17 @@ public class MainWindowViewModel : ViewModelBase
         this.WhenAnyValue(x => x.SelectedTabIndex)
             .Subscribe(index =>
             {
-                if (index >= 0 && index < Repositories.Count)
+                try
                 {
-                    var activeRepoPath = Repositories[index].RepositoryPath;
-                    _settingsService.SetLastActiveRepository(activeRepoPath);
+                    if (index >= 0 && index < Repositories.Count)
+                    {
+                        var activeRepoPath = Repositories[index].RepositoryPath;
+                        _settingsService.SetLastActiveRepository(activeRepoPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error tracking active repository: {ex.Message}");
                 }
             });
     }

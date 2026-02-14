@@ -29,7 +29,17 @@ public class CommitHistoryViewModel : ViewModelBase
         this.WhenAnyValue(x => x.SearchQuery)
             .Throttle(TimeSpan.FromMilliseconds(200))
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(_ => ApplyFilter());
+            .Subscribe(_ =>
+            {
+                try
+                {
+                    ApplyFilter();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error applying commit filter: {ex.Message}");
+                }
+            });
     }
 
     public ObservableCollection<CommitInfo> Commits { get; } = new();
