@@ -420,6 +420,8 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     private StringLRUCache _diffContentCache = null!;
     private StringLRUCache _fullContentCache = null!;
     private CancellationTokenSource? _filterCts;
+    private string? _lastTopFilePath;
+    private DateTime _lastTopFileTime;
 
     private async Task RefreshFilesAsync()
     {
@@ -433,11 +435,14 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         {
             _isRefreshing = true;
 
-            // Preserve selection
-            var selectedPath = SelectedFile?.Path;
+            // Preserve current selection path
+            var currentlySelectedPath = SelectedFile?.Path;
 
             var files = await _gitService.GetChangedFilesAsync(RepositoryPath, _repository);
 
+            // Rebuild collection
+            // Optimizing collection updates is tricky without a custom collection type or key-based sync.
+            // For now, we stick to Clear/Add but handle SELECTION restoration carefully to avoid the flicker-effect logic.
             Files.Clear();
             foreach (var file in files.OrderByDescending(f => f.ModifiedTime))
             {
@@ -446,25 +451,53 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
             this.RaisePropertyChanged(nameof(EmptyStateMessage));
 
-            // Apply filter synchronously to avoid race condition with selection
+            // Apply filter (synchronously updates FilteredFiles if no search query)
             ApplyFilterInternal();
 
-            // Now set selection after filter is complete
-            // Auto-select latest file if enabled and files exist
-            if (AutoSelectLatestFile && FilteredFiles.Count > 0)
+            // Smart Auto-Selection Logic
+            if (FilteredFiles.Count > 0)
             {
-                SelectedFile = FilteredFiles[0];
-                SelectedFileIndex = 0;
-            }
-            // Otherwise try to restore previous selection
-            else if (!string.IsNullOrEmpty(selectedPath))
-            {
-                var newSelection = FilteredFiles.FirstOrDefault(f => f.Path == selectedPath);
-                if (newSelection != null)
+                var newTopFile = FilteredFiles[0];
+                var newTopFilePath = newTopFile.Path;
+
+                // 1. Check if the top file is truly new/changed based on Path or Time
+                // This allows re-selection if the same top file was modified again
+                bool topFileChanged = (_lastTopFilePath != newTopFilePath) ||
+                                    (newTopFile.ModifiedTime > _lastTopFileTime);
+
+                // 2. Auto-select ONLY if enabled AND the top file is new
+                bool shouldAutoSelect = AutoSelectLatestFile && topFileChanged;
+
+                // 3. Special case: If the list was previously empty, we treat it as a new arrival
+                if (_lastTopFilePath == null && AutoSelectLatestFile) shouldAutoSelect = true;
+
+                if (shouldAutoSelect)
                 {
-                    SelectedFile = newSelection;
-                    SelectedFileIndex = FilteredFiles.IndexOf(newSelection);
+                    SelectedFile = newTopFile;
+                    SelectedFileIndex = 0;
                 }
+                else if (!string.IsNullOrEmpty(currentlySelectedPath))
+                {
+                    // 4. If we didn't auto-select, try to preserve the user's previous selection
+                    var fileToRestore = FilteredFiles.FirstOrDefault(f => f.Path == currentlySelectedPath);
+                    if (fileToRestore != null)
+                    {
+                        // Only set if different to avoid triggering unnecessary change events
+                        if (SelectedFile != fileToRestore)
+                        {
+                            SelectedFile = fileToRestore;
+                            SelectedFileIndex = FilteredFiles.IndexOf(fileToRestore);
+                        }
+                    }
+                }
+
+                _lastTopFilePath = newTopFilePath;
+                _lastTopFileTime = newTopFile.ModifiedTime;
+            }
+            else
+            {
+                _lastTopFilePath = null;
+                _lastTopFileTime = DateTime.MinValue;
             }
         }
         finally
