@@ -43,6 +43,7 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
     private Func<Task>? _pendingAction;
     private bool _disposed;
+    private bool _isRefreshing;  // Prevent re-entrant refresh calls
 
     // Event used by RepositoryTabView
     public event Action<int, DiffMode>? ScrollRequested;
@@ -422,38 +423,53 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
     private async Task RefreshFilesAsync()
     {
-        // Preserve selection
-        var selectedPath = SelectedFile?.Path;
-
-        var files = await _gitService.GetChangedFilesAsync(RepositoryPath, _repository);
-
-        Files.Clear();
-        foreach (var file in files.OrderByDescending(f => f.ModifiedTime))
+        // Prevent re-entrant calls that could cause infinite loops
+        if (_isRefreshing)
         {
-            Files.Add(file);
+            return;
         }
 
-        this.RaisePropertyChanged(nameof(EmptyStateMessage));
-
-        // Apply filter synchronously to avoid race condition with selection
-        ApplyFilterInternal();
-
-        // Now set selection after filter is complete
-        // Auto-select latest file if enabled and files exist
-        if (AutoSelectLatestFile && FilteredFiles.Count > 0)
+        try
         {
-            SelectedFile = FilteredFiles[0];
-            SelectedFileIndex = 0;
-        }
-        // Otherwise restore selection if possible
-        else if (!string.IsNullOrEmpty(selectedPath))
-        {
-            var newSelection = FilteredFiles.FirstOrDefault(f => f.Path == selectedPath);
-            if (newSelection != null)
+            _isRefreshing = true;
+
+            // Preserve selection
+            var selectedPath = SelectedFile?.Path;
+
+            var files = await _gitService.GetChangedFilesAsync(RepositoryPath, _repository);
+
+            Files.Clear();
+            foreach (var file in files.OrderByDescending(f => f.ModifiedTime))
             {
-                SelectedFile = newSelection;
-                SelectedFileIndex = FilteredFiles.IndexOf(newSelection);
+                Files.Add(file);
             }
+
+            this.RaisePropertyChanged(nameof(EmptyStateMessage));
+
+            // Apply filter synchronously to avoid race condition with selection
+            ApplyFilterInternal();
+
+            // Now set selection after filter is complete
+            // Auto-select latest file if enabled and files exist
+            if (AutoSelectLatestFile && FilteredFiles.Count > 0)
+            {
+                SelectedFile = FilteredFiles[0];
+                SelectedFileIndex = 0;
+            }
+            // Otherwise try to restore previous selection
+            else if (!string.IsNullOrEmpty(selectedPath))
+            {
+                var newSelection = FilteredFiles.FirstOrDefault(f => f.Path == selectedPath);
+                if (newSelection != null)
+                {
+                    SelectedFile = newSelection;
+                    SelectedFileIndex = FilteredFiles.IndexOf(newSelection);
+                }
+            }
+        }
+        finally
+        {
+            _isRefreshing = false;
         }
     }
 
