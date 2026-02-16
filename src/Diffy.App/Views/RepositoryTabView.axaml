@@ -154,7 +154,6 @@
                     <ListBox x:Name="FileListBox"
                              ItemsSource="{Binding FilteredFiles}"
                              SelectedItem="{Binding SelectedFile}"
-                             SelectedIndex="{Binding SelectedFileIndex}"
                              Background="Transparent">
                         <ListBox.ItemTemplate>
                             <DataTemplate>

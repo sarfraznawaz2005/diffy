@@ -51,16 +51,9 @@ public partial class RepositoryTabView : UserControl
                 listBox.SelectedIndex = index;
             }
 
-            // Scroll into view and focus
+            // Scroll into view without stealing focus - focus stealing
+            // causes fights with user click interactions and can block the UI
             listBox.ScrollIntoView(index);
-            listBox.Focus();
-
-            // Force the container to update its visual state
-            var container = listBox.ContainerFromIndex(index);
-            if (container != null)
-            {
-                container.Focus();
-            }
         }, DispatcherPriority.Background);
     }
 

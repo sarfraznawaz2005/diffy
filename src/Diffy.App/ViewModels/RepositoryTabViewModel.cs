@@ -175,8 +175,14 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
                 {
                     if (file == null)
                     {
-                        Diff.CurrentDiff = null;
-                        SelectedFileIndex = -1;
+                        // Don't clear diff during refresh - FilteredFiles.Clear() causes
+                        // a transient null that would flash the empty state. The selection
+                        // will be restored immediately after the file list is rebuilt.
+                        if (!_isRefreshing)
+                        {
+                            Diff.CurrentDiff = null;
+                            SelectedFileIndex = -1;
+                        }
                     }
                     else
                     {
