@@ -40,13 +40,14 @@ public class GitService : IGitService
                     if (kind == FileStatusKind.Unknown || kind == FileStatusKind.Ignored)
                         continue;
 
+                    var (modTime, size) = GetFileInfo(repoPath, entry.FilePath);
                     var fileStatus = new FileStatus
                     {
                         Path = entry.FilePath,
                         Status = kind,
-                        ModifiedTime = GetFileModifiedTime(repoPath, entry.FilePath),
+                        ModifiedTime = modTime,
                         IsBinary = repo.IsFileBinary(entry.FilePath),
-                        Size = GetFileSize(repoPath, entry.FilePath)
+                        Size = size
                     };
 
                     files.Add(fileStatus);
@@ -339,16 +340,13 @@ public class GitService : IGitService
         return FileStatusKind.Unknown;
     }
 
-    private static DateTime GetFileModifiedTime(string repoPath, string filePath)
+    private static (DateTime ModifiedTime, long Size) GetFileInfo(string repoPath, string filePath)
     {
         var fullPath = Path.Combine(repoPath, filePath);
-        return File.Exists(fullPath) ? File.GetLastWriteTime(fullPath) : DateTime.MinValue;
-    }
-
-    private static long GetFileSize(string repoPath, string filePath)
-    {
-        var fullPath = Path.Combine(repoPath, filePath);
-        return File.Exists(fullPath) ? new FileInfo(fullPath).Length : 0;
+        var info = new FileInfo(fullPath);
+        return info.Exists
+            ? (info.LastWriteTime, info.Length)
+            : (DateTime.MinValue, 0);
     }
 
     /// <summary>

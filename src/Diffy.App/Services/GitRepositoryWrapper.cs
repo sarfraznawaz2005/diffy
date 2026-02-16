@@ -225,6 +225,37 @@ public class GitRepositoryWrapper : IGitRepository
         });
     }
 
+    private static readonly HashSet<string> BinaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".exe",
+        ".dll",
+        ".pdb",
+        ".obj",
+        ".bin",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".ico",
+        ".bmp",
+        ".pdf",
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".mp3",
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".wav",
+        ".ogg",
+        ".ttf",
+        ".otf",
+        ".woff",
+        ".woff2"
+    };
+
     public bool IsFileBinary(string filePath)
     {
         return SafeRun(r =>
@@ -240,15 +271,8 @@ public class GitRepositoryWrapper : IGitRepository
                 }
             }
 
-            var binaryExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ".exe", ".dll", ".pdb", ".obj", ".bin", ".png", ".jpg", ".jpeg", ".gif",
-                ".ico", ".bmp", ".pdf", ".zip", ".rar", ".7z", ".tar", ".gz", ".mp3",
-                ".mp4", ".avi", ".mov", ".wav", ".ogg", ".ttf", ".otf", ".woff", ".woff2"
-            };
-
             var extension = Path.GetExtension(filePath);
-            return binaryExtensions.Contains(extension);
+            return BinaryExtensions.Contains(extension);
         });
     }
 

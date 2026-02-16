@@ -14,6 +14,7 @@ public class FileWatcherService : IFileWatcherService
     private readonly TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(300);
     private readonly object _debounceLock = new();
     private const int MaxRetries = 5;
+    private const int DebounceCleanupThreshold = 500;
     private bool _disposed;
 
     public event EventHandler<FileChangedEventArgs>? FileChanged;
@@ -99,6 +100,17 @@ public class FileWatcherService : IFileWatcherService
             }
 
             _lastEventTimes[key] = now;
+
+            // Periodically prune stale entries to prevent unbounded growth
+            if (_lastEventTimes.Count > DebounceCleanupThreshold)
+            {
+                var staleThreshold = now - TimeSpan.FromMinutes(5);
+                foreach (var kvp in _lastEventTimes)
+                {
+                    if (kvp.Value < staleThreshold)
+                        _lastEventTimes.TryRemove(kvp.Key, out _);
+                }
+            }
         }
 
         var relativePath = Path.GetRelativePath(repoPath, fullPath);

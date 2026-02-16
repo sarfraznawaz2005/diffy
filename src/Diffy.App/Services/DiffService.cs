@@ -188,6 +188,9 @@ public class DiffService : IDiffService
         // Use DiffPlex to get the full side-by-side diff model
         var sideBySide = _sideBySideDiffBuilder.BuildDiffModel(oldText, newText, ignoreWhitespace);
 
+        // Resolve theme colors once for all sub-line highlights
+        var (removedBg, addedBg, textColor) = GetSubLineColors();
+
         var allOldLines = new List<DiffLine>();
         var allNewLines = new List<DiffLine>();
 
@@ -207,7 +210,7 @@ public class DiffService : IDiffService
                 fileDiff.Deletions++;
                 if (oldLine.Type == ChangeType.Modified)
                 {
-                    allOldLines[i].Highlights = GetSubLineHighlights(oldLine.SubPieces, isNew: false);
+                    allOldLines[i].Highlights = GetSubLineHighlights(oldLine.SubPieces, isNew: false, removedBg, addedBg, textColor);
                 }
             }
         }
@@ -228,7 +231,7 @@ public class DiffService : IDiffService
                 fileDiff.Additions++;
                 if (newLine.Type == ChangeType.Modified)
                 {
-                    allNewLines[i].Highlights = GetSubLineHighlights(newLine.SubPieces, isNew: true);
+                    allNewLines[i].Highlights = GetSubLineHighlights(newLine.SubPieces, isNew: true, removedBg, addedBg, textColor);
                 }
             }
         }
@@ -288,6 +291,9 @@ public class DiffService : IDiffService
         // Use DiffPlex to get the full side-by-side diff model
         var sideBySide = _sideBySideDiffBuilder.BuildDiffModel(oldText, newText, ignoreWhitespace);
 
+        // Resolve theme colors once for all sub-line highlights
+        var (removedBg, addedBg, textColor) = GetSubLineColors();
+
         var allOldLines = new List<DiffLine>();
         var allNewLines = new List<DiffLine>();
 
@@ -308,7 +314,7 @@ public class DiffService : IDiffService
                 fileDiff.Deletions++;
                 if (oldLine.Type == ChangeType.Modified)
                 {
-                    allOldLines[i].Highlights = GetSubLineHighlights(oldLine.SubPieces, isNew: false);
+                    allOldLines[i].Highlights = GetSubLineHighlights(oldLine.SubPieces, isNew: false, removedBg, addedBg, textColor);
                 }
             }
         }
@@ -329,7 +335,7 @@ public class DiffService : IDiffService
                 fileDiff.Additions++;
                 if (newLine.Type == ChangeType.Modified)
                 {
-                    allNewLines[i].Highlights = GetSubLineHighlights(newLine.SubPieces, isNew: true);
+                    allNewLines[i].Highlights = GetSubLineHighlights(newLine.SubPieces, isNew: true, removedBg, addedBg, textColor);
                 }
             }
         }
@@ -487,20 +493,20 @@ public class DiffService : IDiffService
         };
     }
 
-    private List<HighlightedSegment> GetSubLineHighlights(List<DiffPlex.DiffBuilder.Model.DiffPiece> subPieces, bool isNew)
+    private (string removedBg, string addedBg, string textColor) GetSubLineColors()
+    {
+        var theme = _settingsService.GetTheme();
+        var isDark = theme == AppTheme.Dark;
+        string removedBg = isDark ? "#663333" : "#FFCCCC";
+        string addedBg = isDark ? "#336633" : "#CCFFCC";
+        string textColor = isDark ? "#FFFFFF" : "#000000";
+        return (removedBg, addedBg, textColor);
+    }
+
+    private static List<HighlightedSegment> GetSubLineHighlights(List<DiffPlex.DiffBuilder.Model.DiffPiece> subPieces, bool isNew, string removedBg, string addedBg, string textColor)
     {
         var highlights = new List<HighlightedSegment>();
         int offset = 0;
-
-        // Define theme-aware background colors for intra-line changes
-        var theme = _settingsService.GetTheme();
-        var isDark = theme == AppTheme.Dark;
-
-        // For light theme: slightly darker red/green (more saturated) with black text
-        // For dark theme: subtle dark red/green (slightly brighter than very dark) with white text for contrast
-        string removedBg = isDark ? "#663333" : "#FFCCCC"; // Subtle dark red for dark theme, darker red for light theme
-        string addedBg = isDark ? "#336633" : "#CCFFCC";   // Subtle dark green for dark theme, darker green for light theme
-        string textColor = isDark ? "#FFFFFF" : "#000000"; // White text for dark theme, black text for light theme
 
         foreach (var piece in subPieces)
         {

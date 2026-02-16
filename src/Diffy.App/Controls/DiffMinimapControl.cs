@@ -98,6 +98,9 @@ public class DiffMinimapControl : Control
 
     #endregion
 
+    private static readonly ISolidColorBrush ViewportBorderBrush = new SolidColorBrush(Color.FromArgb(180, 60, 60, 60));
+    private static readonly IPen ViewportBorderPen = new Pen(ViewportBorderBrush, 1);
+
     private DispatcherTimer? _scrollDebounceTimer;
     private bool _isPointerDragging;
     private IReadOnlyList<DiffLine>? _cachedLines;
@@ -281,8 +284,7 @@ public class DiffMinimapControl : Control
                 // Draw viewport indicator with dark border on all sides
                 if (ViewportColor != null)
                 {
-                    var borderBrush = new SolidColorBrush(Color.FromArgb(180, 60, 60, 60));
-                    context.DrawRectangle(ViewportColor, new Pen(borderBrush, 1), viewportRect);
+                    context.DrawRectangle(ViewportColor, ViewportBorderPen, viewportRect);
                 }
             }
         }

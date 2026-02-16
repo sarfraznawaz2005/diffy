@@ -20,7 +20,7 @@ public interface ILRUCache<TKey, TValue>
 public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
     where TKey : notnull
 {
-    private readonly ConcurrentDictionary<TKey, LRUCacheNode> _nodes = new();
+    private readonly Dictionary<TKey, LRUCacheNode> _nodes = new();
     private readonly LinkedList<TKey> _order = new();
     private readonly long _maxSize;
     private long _currentSize;
@@ -28,7 +28,16 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
 
     public long MaxSize => _maxSize;
     public long CurrentSize => _currentSize;
-    public int Count => _nodes.Count;
+    public int Count
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _nodes.Count;
+            }
+        }
+    }
 
     public LruCache(long maxSize)
     {
@@ -37,20 +46,20 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
 
     public TValue Get(TKey key)
     {
-        if (!_nodes.TryGetValue(key, out var node))
-            return default!;
-
         lock (_lock)
         {
+            if (!_nodes.TryGetValue(key, out var node))
+                return default!;
+
             if (node.Value == null)
             {
-                _nodes.TryRemove(key, out _);
-                _order.Remove(key);
+                _order.Remove(node.ListNode);
+                _nodes.Remove(key);
                 _currentSize -= node.Weight;
                 return default!;
             }
 
-            MoveToFront(key);
+            MoveToFront(node);
             return node.Value!;
         }
     }
@@ -64,23 +73,26 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
         {
             if (_nodes.TryGetValue(key, out var existingNode))
             {
+                _currentSize -= existingNode.Weight;
                 existingNode.Value = value;
                 existingNode.Weight = weight;
-                MoveToFront(key);
+                _currentSize += weight;
+                MoveToFront(existingNode);
                 return;
             }
 
             EnsureCapacity(weight);
 
+            var listNode = _order.AddFirst(key);
             var newNode = new LRUCacheNode
             {
                 Key = key,
                 Value = value,
-                Weight = weight
+                Weight = weight,
+                ListNode = listNode
             };
 
             _nodes[key] = newNode;
-            _order.AddFirst(newNode.Key);
             _currentSize += weight;
         }
     }
@@ -89,9 +101,9 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
     {
         lock (_lock)
         {
-            if (_nodes.TryRemove(key, out var node))
+            if (_nodes.Remove(key, out var node))
             {
-                _order.Remove(key);
+                _order.Remove(node.ListNode);
                 _currentSize -= node.Weight;
             }
         }
@@ -107,12 +119,11 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
         }
     }
 
-    private void MoveToFront(TKey key)
+    private void MoveToFront(LRUCacheNode node)
     {
-        if (!_order.Remove(key))
-            return;
-
-        _order.AddFirst(key);
+        _order.Remove(node.ListNode);
+        var newListNode = _order.AddFirst(node.Key);
+        node.ListNode = newListNode;
     }
 
     private void EnsureCapacity(long requiredWeight)
@@ -121,21 +132,14 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
         {
             var lastNode = _order.Last;
             if (lastNode == null)
-            {
-                _order.RemoveLast();
-                continue;
-            }
+                break;
 
             var lruKey = lastNode.Value;
-            if (_nodes.TryRemove(lruKey, out var node))
+            if (_nodes.Remove(lruKey, out var node))
             {
-                _order.Remove(lruKey);
                 _currentSize -= node.Weight;
             }
-            else
-            {
-                _order.RemoveLast();
-            }
+            _order.RemoveLast();
         }
     }
 
@@ -144,6 +148,7 @@ public class LruCache<TKey, TValue> : ILRUCache<TKey, TValue>
         public TKey Key { get; set; } = default!;
         public TValue? Value { get; set; }
         public long Weight { get; set; }
+        public LinkedListNode<TKey> ListNode { get; set; } = null!;
     }
 }
 
@@ -205,14 +210,17 @@ public class StringLRUCache : ILRUCache<string, string>
         if (string.IsNullOrEmpty(content))
             return 0;
 
-        var lines = content.Split('\n');
-        var totalWeight = lines.Length * 2 + content.Length;
-
-        for (int i = 0; i < lines.Length; i++)
+        // Count newlines without allocating a string[] via Split
+        int lineCount = 1;
+        var span = content.AsSpan();
+        for (int i = 0; i < span.Length; i++)
         {
-            totalWeight += lines[i].Length * 2 + i * 3;
+            if (span[i] == '\n')
+                lineCount++;
         }
 
-        return totalWeight;
+        // Approximate weight: character data + per-line overhead
+        long totalWeight = content.Length * 2L + lineCount * 5L;
+        return Math.Max(totalWeight, 1);
     }
 }

@@ -77,14 +77,17 @@ public class DiffLineKindToColorConverter : IValueConverter
 {
     public static readonly DiffLineKindToColorConverter Instance = new();
 
+    private static readonly ISolidColorBrush AddedBrush = new SolidColorBrush(Color.FromRgb(30, 60, 30));
+    private static readonly ISolidColorBrush RemovedBrush = new SolidColorBrush(Color.FromRgb(60, 30, 30));
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is DiffLineKind kind)
         {
             return kind switch
             {
-                DiffLineKind.Added => new SolidColorBrush(Color.FromRgb(30, 60, 30)),   // Dark Green
-                DiffLineKind.Removed => new SolidColorBrush(Color.FromRgb(60, 30, 30)), // Dark Red
+                DiffLineKind.Added => AddedBrush,
+                DiffLineKind.Removed => RemovedBrush,
                 _ => Brushes.Transparent
             };
         }
@@ -269,11 +272,10 @@ public class StringStatusToColorConverter : IValueConverter
     {
         if (value is string status)
         {
-            var s = status.ToLowerInvariant();
-            if (s.Contains("add") || s == "a") return Brushes.Green;
-            if (s.Contains("mod") || s == "m") return Brushes.Orange;
-            if (s.Contains("del") || s == "d") return Brushes.Red;
-            if (s.Contains("ren") || s == "r") return Brushes.Blue;
+            if (status.Contains("Add", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "a", StringComparison.OrdinalIgnoreCase)) return Brushes.Green;
+            if (status.Contains("Mod", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "m", StringComparison.OrdinalIgnoreCase)) return Brushes.Orange;
+            if (status.Contains("Del", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "d", StringComparison.OrdinalIgnoreCase)) return Brushes.Red;
+            if (status.Contains("Ren", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "r", StringComparison.OrdinalIgnoreCase)) return Brushes.Blue;
         }
         return Brushes.Gray;
     }
@@ -295,11 +297,10 @@ public class StringStatusToLabelConverter : IValueConverter
     {
         if (value is string status)
         {
-            var s = status.ToLowerInvariant();
-            if (s.Contains("add") || s == "a") return "A";
-            if (s.Contains("mod") || s == "m") return "M";
-            if (s.Contains("del") || s == "d") return "D";
-            if (s.Contains("ren") || s == "r") return "R";
+            if (status.Contains("Add", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "a", StringComparison.OrdinalIgnoreCase)) return "A";
+            if (status.Contains("Mod", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "m", StringComparison.OrdinalIgnoreCase)) return "M";
+            if (status.Contains("Del", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "d", StringComparison.OrdinalIgnoreCase)) return "D";
+            if (status.Contains("Ren", StringComparison.OrdinalIgnoreCase) || string.Equals(status, "r", StringComparison.OrdinalIgnoreCase)) return "R";
         }
         return "?";
     }

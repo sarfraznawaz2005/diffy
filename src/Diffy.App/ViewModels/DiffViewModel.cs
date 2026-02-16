@@ -22,6 +22,7 @@ public class DiffViewModel : ViewModelBase, IDisposable
     private Task? _progressiveHighlightingTask;
 
     private const int LargeFileThreshold = 500;
+    private const long MaxDiffFileSize = 5 * 1024 * 1024; // 5 MB
 
     public DiffViewModel(
         string repositoryPath,
@@ -96,7 +97,7 @@ public class DiffViewModel : ViewModelBase, IDisposable
             // Reset jump index when loading new file to prevent incorrect navigation
             _lastJumpIndex = -1;
 
-            if (file.IsBinary)
+            if (file.IsBinary || file.Size > MaxDiffFileSize)
             {
                 CurrentDiff = new FileDiff
                 {
