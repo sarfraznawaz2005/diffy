@@ -465,6 +465,14 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
                     SelectedFileIndex = FilteredFiles.IndexOf(newSelection);
                 }
             }
+
+            // If no file is selected after refresh (e.g., all files were committed),
+            // clear stale diff content that was preserved during the refresh cycle.
+            if (SelectedFile == null)
+            {
+                Diff.CurrentDiff = null;
+                SelectedFileIndex = -1;
+            }
         }
         finally
         {
