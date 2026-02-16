@@ -13,6 +13,7 @@ public class CommitHistoryViewModel : ViewModelBase
     private readonly IGitService _gitService;
     private readonly string _repositoryPath;
     private readonly IGitRepository _repository;
+    private CancellationTokenSource? _loadCommitsCts;
 
     public CommitHistoryViewModel(string repositoryPath, IGitService gitService, IGitRepository repository)
     {
@@ -67,10 +68,16 @@ public class CommitHistoryViewModel : ViewModelBase
     {
         if (IsLoading) return;
 
+        _loadCommitsCts?.Cancel();
+        _loadCommitsCts = new CancellationTokenSource();
+        var ct = _loadCommitsCts.Token;
+
         try
         {
             IsLoading = true;
-            var newCommits = await _gitService.GetCommitHistoryAsync(_repositoryPath, skip: Commits.Count, take: 50, repository: _repository);
+            var newCommits = await _gitService.GetCommitHistoryAsync(_repositoryPath, skip: Commits.Count, take: 50, repository: _repository, ct: ct);
+
+            ct.ThrowIfCancellationRequested();
 
             if (newCommits.Count < 50)
             {
@@ -84,6 +91,7 @@ public class CommitHistoryViewModel : ViewModelBase
 
             ApplyFilter();
         }
+        catch (OperationCanceledException) { }
         finally
         {
             IsLoading = false;
@@ -92,20 +100,34 @@ public class CommitHistoryViewModel : ViewModelBase
 
     private void ApplyFilter()
     {
-        var query = SearchQuery?.Trim().ToLowerInvariant();
-        FilteredCommits.Clear();
+        var query = SearchQuery?.Trim();
 
-        var filtered = string.IsNullOrEmpty(query)
+        IEnumerable<CommitInfo> filtered = string.IsNullOrEmpty(query)
             ? Commits
             : Commits.Where(c =>
-                (c.Hash?.ToLowerInvariant().Contains(query) ?? false) ||
-                (c.Message?.ToLowerInvariant().Contains(query) ?? false) ||
-                (c.Author?.ToLowerInvariant().Contains(query) ?? false));
+                (c.Hash?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (c.Message?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (c.Author?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false));
 
-        foreach (var commit in filtered)
+        var filteredList = filtered.ToList();
+
+        // Update in-place to avoid Clear+Rebuild flickering
+        int i = 0;
+        foreach (var commit in filteredList)
         {
-            FilteredCommits.Add(commit);
+            if (i < FilteredCommits.Count)
+            {
+                if (!ReferenceEquals(FilteredCommits[i], commit))
+                    FilteredCommits[i] = commit;
+            }
+            else
+            {
+                FilteredCommits.Add(commit);
+            }
+            i++;
         }
+        while (FilteredCommits.Count > i)
+            FilteredCommits.RemoveAt(FilteredCommits.Count - 1);
     }
 
     private async Task ViewCommitFilesAsync(CommitInfo commit)
@@ -117,11 +139,23 @@ public class CommitHistoryViewModel : ViewModelBase
             SelectedCommit = commit;
             var files = await _gitService.GetFilesInCommitAsync(_repositoryPath, commit.FullHash, repository: _repository);
 
-            CommitFiles.Clear();
+            // Update in-place to avoid flickering
+            int i = 0;
             foreach (var file in files)
             {
-                CommitFiles.Add(file);
+                if (i < CommitFiles.Count)
+                {
+                    if (!ReferenceEquals(CommitFiles[i], file))
+                        CommitFiles[i] = file;
+                }
+                else
+                {
+                    CommitFiles.Add(file);
+                }
+                i++;
             }
+            while (CommitFiles.Count > i)
+                CommitFiles.RemoveAt(CommitFiles.Count - 1);
 
             IsCommitFilesVisible = true;
         }

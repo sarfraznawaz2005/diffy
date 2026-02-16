@@ -100,6 +100,8 @@ public class DiffMinimapControl : Control
 
     private DispatcherTimer? _scrollDebounceTimer;
     private bool _isPointerDragging;
+    private IReadOnlyList<DiffLine>? _cachedLines;
+    private IEnumerable<DiffLine>? _cachedLinesSource;
 
     static DiffMinimapControl()
     {
@@ -173,23 +175,23 @@ public class DiffMinimapControl : Control
             return;
         }
 
-        // Debounce for passive scrolling (wheel, keyboard, programmatic)
-        if (_scrollDebounceTimer != null)
+        // Debounce for passive scrolling - reuse single timer to avoid GC pressure
+        if (_scrollDebounceTimer == null)
+        {
+            _scrollDebounceTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16) // 1 frame at 60fps for passive scroll
+            };
+            _scrollDebounceTimer.Tick += (s, args) =>
+            {
+                InvalidateVisual();
+                _scrollDebounceTimer?.Stop();
+            };
+        }
+        else
         {
             _scrollDebounceTimer.Stop();
         }
-
-        _scrollDebounceTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(16) // 1 frame at 60fps for passive scroll
-        };
-
-        _scrollDebounceTimer.Tick += (s, args) =>
-        {
-            InvalidateVisual();
-            _scrollDebounceTimer?.Stop();
-            _scrollDebounceTimer = null;
-        };
 
         _scrollDebounceTimer.Start();
     }
@@ -219,9 +221,16 @@ public class DiffMinimapControl : Control
             context.DrawLine(new Pen(BorderBrush, 1), new Point(0, 0), new Point(0, bounds.Height));
         }
 
-        var lines = DiffLines?.ToList();
-        if (lines == null || lines.Count == 0)
-            return;
+        // Cache the materialized list to avoid allocating on every render frame
+        var source = DiffLines;
+        if (source == null) return;
+        if (!ReferenceEquals(source, _cachedLinesSource))
+        {
+            _cachedLinesSource = source;
+            _cachedLines = source as IReadOnlyList<DiffLine> ?? source.ToList();
+        }
+        var lines = _cachedLines!;
+        if (lines.Count == 0) return;
 
         // Calculate scale factor
         var totalLines = lines.Count;

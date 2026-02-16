@@ -30,7 +30,8 @@ class Program
                 // Another instance is already running
                 var singleInstanceService = new Services.SingleInstanceService();
                 var fullArgs = args.Length > 0 ? string.Join(" ", args) : string.Empty;
-                singleInstanceService.SendArgsAsync(fullArgs).GetAwaiter().GetResult();
+                singleInstanceService.SendArgsAsync(fullArgs)
+                    .Wait(TimeSpan.FromSeconds(3));
                 return;
             }
 
@@ -75,18 +76,22 @@ class Program
     /// </summary>
     public static void Log(string message, string source = "DEBUG")
     {
-        try
+        // Write log on background thread to avoid blocking UI thread
+        _ = System.Threading.Tasks.Task.Run(() =>
         {
-            var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "errorlog.txt");
-            var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}] {message}\n" +
-                           new string('-', 80) + "\n\n";
+            try
+            {
+                var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "errorlog.txt");
+                var logMessage = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}] {message}\n" +
+                               new string('-', 80) + "\n\n";
 
-            System.IO.File.AppendAllText(logPath, logMessage);
-        }
-        catch
-        {
-            // Fail silently if we can't write log
-        }
+                System.IO.File.AppendAllText(logPath, logMessage);
+            }
+            catch
+            {
+                // Fail silently if we can't write log
+            }
+        });
     }
 
     private static System.IO.FileStream? CreateSingleInstanceLock(string lockFilePath)

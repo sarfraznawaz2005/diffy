@@ -84,7 +84,7 @@ public class MainWindowViewModel : ViewModelBase
         RefreshCurrentTabCommand.ThrownExceptions.Subscribe(ex =>
             Program.Log($"RefreshCurrentTabCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
 
-        ToggleContextMenuCommand = ReactiveCommand.Create(ToggleContextMenu);
+        ToggleContextMenuCommand = ReactiveCommand.CreateFromTask(ToggleContextMenuAsync);
         ToggleContextMenuCommand.ThrownExceptions.Subscribe(ex =>
             Program.Log($"ToggleContextMenuCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
 
@@ -111,6 +111,13 @@ public class MainWindowViewModel : ViewModelBase
         TrustAndRetryCommand = ReactiveCommand.CreateFromTask(TrustAndRetryAsync, canTrust);
         TrustAndRetryCommand.ThrownExceptions.Subscribe(ex =>
             Program.Log($"TrustAndRetryCommand Exception: {ex.Message}", nameof(MainWindowViewModel)));
+
+        // Eagerly load context menu registration state on background thread
+        _ = Task.Run(() =>
+        {
+            var registered = _shellIntegrationService.IsRegistered();
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => IsContextMenuRegistered = registered);
+        });
 
         // Track last active repository when tab selection changes
         this.WhenAnyValue(x => x.SelectedTabIndex)
@@ -160,14 +167,7 @@ public class MainWindowViewModel : ViewModelBase
 
     public bool IsContextMenuRegistered
     {
-        get
-        {
-            if (_isContextMenuRegistered == null)
-            {
-                _isContextMenuRegistered = _shellIntegrationService.IsRegistered();
-            }
-            return _isContextMenuRegistered.Value;
-        }
+        get => _isContextMenuRegistered ?? false;
         set => this.RaiseAndSetIfChanged(ref _isContextMenuRegistered, value);
     }
 
@@ -414,26 +414,40 @@ public class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void ToggleContextMenu()
+    private async Task ToggleContextMenuAsync()
     {
+        // Run registry/file operations on background thread to avoid blocking UI
         if (IsContextMenuRegistered)
         {
-            _shellIntegrationService.UnregisterContextMenuItem();
+            await Task.Run(() => _shellIntegrationService.UnregisterContextMenuItem());
             IsContextMenuRegistered = false;
         }
         else
         {
-            _shellIntegrationService.RegisterContextMenuItem();
+            await Task.Run(() => _shellIntegrationService.RegisterContextMenuItem());
             IsContextMenuRegistered = true;
         }
     }
 
     private void UpdateRecentRepositories()
     {
-        RecentRepositories.Clear();
-        foreach (var path in _settingsService.GetRecentRepositories())
+        var recent = _settingsService.GetRecentRepositories();
+        // Update in-place to avoid Clear+Rebuild flickering
+        int i = 0;
+        foreach (var path in recent)
         {
-            RecentRepositories.Add(path);
+            if (i < RecentRepositories.Count)
+            {
+                if (RecentRepositories[i] != path)
+                    RecentRepositories[i] = path;
+            }
+            else
+            {
+                RecentRepositories.Add(path);
+            }
+            i++;
         }
+        while (RecentRepositories.Count > i)
+            RecentRepositories.RemoveAt(RecentRepositories.Count - 1);
     }
 }

@@ -113,9 +113,10 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
     private void InitializeCaches()
     {
-        var memoryLimit = System.Environment.WorkingSet / 4;
-        _diffContentCache = new StringLRUCache(memoryLimit, StringLRUCache.CalculateContentWeight);
-        _fullContentCache = new StringLRUCache(memoryLimit, StringLRUCache.CalculateContentWeight);
+        // Use a fixed default (64MB) to avoid the slow Environment.WorkingSet OS query
+        const long defaultMemoryLimit = 64 * 1024 * 1024;
+        _diffContentCache = new StringLRUCache(defaultMemoryLimit, StringLRUCache.CalculateContentWeight);
+        _fullContentCache = new StringLRUCache(defaultMemoryLimit, StringLRUCache.CalculateContentWeight);
     }
 
     private void InitializeCommands()
@@ -130,11 +131,11 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         OpenFileCommand.ThrownExceptions.Subscribe(ex =>
             Program.Log($"OpenFileCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
 
-        RevertFileCommand = ReactiveCommand.Create<FileStatus>(f => _ = RevertFileAsync(f), hasFileSelected);
+        RevertFileCommand = ReactiveCommand.CreateFromTask<FileStatus>(async f => await RevertFileAsync(f), hasFileSelected);
         RevertFileCommand.ThrownExceptions.Subscribe(ex =>
             Program.Log($"RevertFileCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
 
-        DeleteFileCommand = ReactiveCommand.Create<FileStatus>(f => _ = DeleteFileAsync(f), hasFileSelected);
+        DeleteFileCommand = ReactiveCommand.CreateFromTask<FileStatus>(async f => await DeleteFileAsync(f), hasFileSelected);
         DeleteFileCommand.ThrownExceptions.Subscribe(ex =>
             Program.Log($"DeleteFileCommand Exception: {ex.Message}", nameof(RepositoryTabViewModel)));
 
@@ -220,18 +221,12 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         Diff.WhenAnyValue(x => x.IgnoreWhitespace)
             .Skip(1) // Skip initial value to prevent reload on startup
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async _ =>
+            .Subscribe(ignore =>
             {
-                try
+                if (SelectedFile != null)
                 {
-                    if (SelectedFile != null)
-                    {
-                        await Diff.LoadDiffAsync(SelectedFile);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error reloading diff with whitespace toggle: {ex.Message}");
+                    // LoadDiffAsync handles its own cancellation and error logging
+                    _ = Diff.LoadDiffAsync(SelectedFile);
                 }
             });
 
@@ -239,18 +234,11 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         Diff.WhenAnyValue(x => x.ShowFullContent)
             .Skip(1) // Skip initial value
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(async _ =>
+            .Subscribe(showFull =>
             {
-                try
+                if (SelectedFile != null)
                 {
-                    if (SelectedFile != null)
-                    {
-                        await Diff.LoadDiffAsync(SelectedFile);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error reloading diff with full content toggle: {ex.Message}");
+                    _ = Diff.LoadDiffAsync(SelectedFile);
                 }
             });
 
@@ -339,10 +327,16 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
     {
         // FileWatcherService calls this on a background thread
         // Use Dispatcher to ensure UI updates happen on UI thread
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
         {
-            // Debounce refresh
-            _ = RefreshFilesAsync();
+            try
+            {
+                await RefreshFilesAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RefreshFilesAsync failed: {ex.Message}");
+            }
         });
     }
 
@@ -444,16 +438,15 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
             var files = await _gitService.GetChangedFilesAsync(RepositoryPath, _repository);
 
-            Files.Clear();
-            foreach (var file in files.OrderByDescending(f => f.ModifiedTime))
-            {
-                Files.Add(file);
-            }
+            var sorted = files.OrderByDescending(f => f.ModifiedTime).ToList();
+
+            // Update Files in-place to avoid Clear+Rebuild flickering
+            SyncCollection(Files, sorted);
 
             this.RaisePropertyChanged(nameof(EmptyStateMessage));
 
-            // Apply filter synchronously to avoid race condition with selection
-            ApplyFilterInternal();
+            // Apply filter and await it to avoid race condition with selection
+            await ApplyFilterInternalAsync();
 
             // Now set selection after filter is complete
             // Auto-select latest file if enabled and files exist
@@ -479,6 +472,55 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Updates target collection to match source without Clear+Rebuild,
+    /// reducing CollectionChanged events and preventing selection flickering.
+    /// </summary>
+    private static void SyncCollection<T>(ObservableCollection<T> target, IList<T> source)
+    {
+        int i = 0;
+        foreach (var item in source)
+        {
+            if (i < target.Count)
+            {
+                if (!ReferenceEquals(target[i], item))
+                    target[i] = item;
+            }
+            else
+            {
+                target.Add(item);
+            }
+            i++;
+        }
+        while (target.Count > i)
+            target.RemoveAt(target.Count - 1);
+    }
+
+    private async Task ApplyFilterInternalAsync()
+    {
+        _filterCts?.Cancel();
+        _filterCts = new CancellationTokenSource();
+
+        var query = SearchQuery?.Trim();
+
+        if (string.IsNullOrEmpty(query))
+        {
+            SyncCollection(FilteredFiles, Files);
+            return;
+        }
+
+        // For search queries, run search on background thread then update UI
+        var token = _filterCts.Token;
+        var filtered = await Task.Run(() => PerformSearch(query, token), token);
+
+        if (token.IsCancellationRequested) return;
+
+        SyncCollection(FilteredFiles, filtered);
+    }
+
+    /// <summary>
+    /// Synchronous filter apply for use outside of RefreshFilesAsync (e.g., search query changes).
+    /// </summary>
     private void ApplyFilterInternal()
     {
         _filterCts?.Cancel();
@@ -488,29 +530,27 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
         if (string.IsNullOrEmpty(query))
         {
-            FilteredFiles.Clear();
-            foreach (var file in Files) FilteredFiles.Add(file);
+            SyncCollection(FilteredFiles, Files);
             return;
         }
 
-        // For search queries, we still need async but handle selection differently
+        // For search queries, run async in background
         var token = _filterCts.Token;
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
-            var filtered = await Task.Run(() => PerformSearch(query, token), token);
-
-            if (token.IsCancellationRequested) return;
-
-            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            try
             {
+                var filtered = await Task.Run(() => PerformSearch(query, token), token);
+
                 if (token.IsCancellationRequested) return;
 
-                FilteredFiles.Clear();
-                foreach (var file in filtered)
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    FilteredFiles.Add(file);
-                }
-            });
+                    if (token.IsCancellationRequested) return;
+                    SyncCollection(FilteredFiles, filtered);
+                });
+            }
+            catch (OperationCanceledException) { }
         }, token);
     }
 

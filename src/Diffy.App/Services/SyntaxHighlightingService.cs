@@ -18,8 +18,9 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
 {
     private readonly Diffy.Core.Interfaces.ISettingsService _settingsService;
     private readonly ConcurrentDictionary<ThemeName, RegistryOptions> _registries = new();
-    private readonly ConcurrentDictionary<string, Dictionary<int, List<HighlightedSegment>>> _highlightCache = new();
+    private readonly ConcurrentDictionary<string, (Dictionary<int, List<HighlightedSegment>> Data, long Timestamp)> _highlightCache = new();
     private const int MaxCacheSize = 100;
+    private long _cacheTimestamp;
     private const int ProgressiveHighlightingChunkSize = 100;
     private ThemeName? _lastThemeName;
 
@@ -94,8 +95,8 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
 
             await Task.WhenAll(oldTask, newTask);
 
-            var oldHighlights = oldTask.Result;
-            var newHighlights = newTask.Result;
+            var oldHighlights = await oldTask;
+            var newHighlights = await newTask;
 
             // Apply search highlighting manually after syntax highlighting
             if (!string.IsNullOrEmpty(searchQuery))
@@ -114,7 +115,18 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
             // Process remaining lines in background if viewport was specified
             if (viewportStart.HasValue && viewportEnd.HasValue)
             {
-                _ = Task.Run(() => ProcessRemainingLinesAsync(diff, oldHighlights, newHighlights, visibleStart, visibleEnd, onChunkComplete, cancellationToken), cancellationToken);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await ProcessRemainingLinesAsync(diff, oldHighlights, newHighlights, visibleStart, visibleEnd, onChunkComplete, cancellationToken);
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Background highlighting failed: {ex.Message}");
+                    }
+                }, cancellationToken);
             }
         }
         catch (OperationCanceledException)
@@ -556,7 +568,7 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
 
         // Check cache first
         if (_highlightCache.TryGetValue(cacheKey, out var cached))
-            return cached;
+            return cached.Data;
 
         var document = new TextDocument(content);
         var totalLines = document.LineCount;
@@ -640,9 +652,9 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
             }
         }
 
-        // Cache the result with LRU eviction
+        // Cache the result with FIFO eviction
         EvictCacheIfNeeded();
-        _highlightCache.TryAdd(cacheKey, result);
+        _highlightCache.TryAdd(cacheKey, (result, Interlocked.Increment(ref _cacheTimestamp)));
 
         return result;
     }
@@ -651,7 +663,17 @@ public class SyntaxHighlightingService : ISyntaxHighlightingService
     {
         if (_highlightCache.Count >= MaxCacheSize)
         {
-            var oldestKey = _highlightCache.Keys.FirstOrDefault();
+            // Evict the entry with the lowest timestamp (oldest)
+            string? oldestKey = null;
+            long oldestTimestamp = long.MaxValue;
+            foreach (var kvp in _highlightCache)
+            {
+                if (kvp.Value.Timestamp < oldestTimestamp)
+                {
+                    oldestTimestamp = kvp.Value.Timestamp;
+                    oldestKey = kvp.Key;
+                }
+            }
             if (oldestKey != null)
                 _highlightCache.TryRemove(oldestKey, out _);
         }

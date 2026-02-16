@@ -10,8 +10,10 @@ public class FileWatcherService : IFileWatcherService
 {
     private readonly ConcurrentDictionary<string, FileSystemWatcher> _watchers = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastEventTimes = new();
+    private readonly ConcurrentDictionary<string, int> _retryCount = new();
     private readonly TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(300);
     private readonly object _debounceLock = new();
+    private const int MaxRetries = 5;
     private bool _disposed;
 
     public event EventHandler<FileChangedEventArgs>? FileChanged;
@@ -38,6 +40,7 @@ public class FileWatcherService : IFileWatcherService
 
         watcher.EnableRaisingEvents = true;
         _watchers[repoPath] = watcher;
+        _retryCount[repoPath] = 0;
     }
 
     public void StopWatching(string repoPath)
@@ -110,7 +113,6 @@ public class FileWatcherService : IFileWatcherService
 
     private void HandleError(string repoPath, Exception ex)
     {
-        // Log error and try to restart watcher
         System.Diagnostics.Debug.WriteLine($"FileWatcher error for {repoPath}: {ex.Message}");
 
         if (_watchers.TryRemove(repoPath, out var watcher))
@@ -118,8 +120,18 @@ public class FileWatcherService : IFileWatcherService
             watcher.Dispose();
         }
 
-        // Try to restart after a delay
-        Task.Delay(1000).ContinueWith(_ =>
+        // Retry with exponential backoff and a maximum retry count
+        var retries = _retryCount.GetOrAdd(repoPath, 0);
+        if (retries >= MaxRetries)
+        {
+            System.Diagnostics.Debug.WriteLine($"FileWatcher: max retries ({MaxRetries}) reached for {repoPath}, giving up");
+            return;
+        }
+
+        _retryCount[repoPath] = retries + 1;
+        var delay = Math.Min(1000 * (1 << retries), 30000); // 1s, 2s, 4s, 8s, 16s cap at 30s
+
+        Task.Delay(delay).ContinueWith(_ =>
         {
             if (!_disposed && Directory.Exists(repoPath))
             {

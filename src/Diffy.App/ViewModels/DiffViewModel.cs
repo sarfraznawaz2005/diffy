@@ -207,41 +207,47 @@ public class DiffViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            IsLoading = false;
+            // Only clear IsLoading if this is still the active load operation.
+            // Otherwise a cancelled load would prematurely hide the loading indicator
+            // while a newer load is still in progress.
             if (cts == _loadDiffCts)
+            {
+                IsLoading = false;
                 _loadDiffCts = null;
+            }
         }
     }
 
     private void OnHighlightChunkComplete(int chunkStart, int chunkEnd)
     {
-        // Notify that a chunk of lines has been highlighted
-        // This triggers UI update for the affected lines
-        try
+        // This callback is invoked from a background thread (Task.Run in SyntaxHighlightingService).
+        // RaisePropertyChanged must happen on the UI thread to avoid cross-thread access crashes.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            if (CurrentDiff == null)
-                return;
-
-            if (chunkStart < 0 || chunkStart >= CurrentDiff.InlineLines.Count)
-                return;
-
-            // Clamp chunkEnd to valid range
-            var safeChunkEnd = Math.Min(chunkEnd, CurrentDiff.InlineLines.Count - 1);
-
-            for (int i = chunkStart; i <= safeChunkEnd; i++)
+            try
             {
-                var line = CurrentDiff.InlineLines[i];
-                if (line != null)
+                if (CurrentDiff == null)
+                    return;
+
+                if (chunkStart < 0 || chunkStart >= CurrentDiff.InlineLines.Count)
+                    return;
+
+                var safeChunkEnd = Math.Min(chunkEnd, CurrentDiff.InlineLines.Count - 1);
+
+                for (int i = chunkStart; i <= safeChunkEnd; i++)
                 {
-                    line.RaisePropertyChanged("Highlights");
+                    var line = CurrentDiff.InlineLines[i];
+                    if (line != null)
+                    {
+                        line.RaisePropertyChanged("Highlights");
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            // Log but don't crash - highlighting update failure is non-critical
-            System.Diagnostics.Debug.WriteLine($"OnHighlightChunkComplete failed: {ex.Message}");
-        }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OnHighlightChunkComplete failed: {ex.Message}");
+            }
+        });
     }
 
     private void ToggleMode()
@@ -268,23 +274,35 @@ public class DiffViewModel : ViewModelBase, IDisposable
     {
         if (CurrentDiff == null) return;
 
-        var items = Mode == DiffMode.SideBySide
-            ? (IEnumerable<object>)CurrentDiff.AlignedRows
-            : CurrentDiff.InlineLines;
+        // Use the source collections directly to avoid allocating a copy
+        int count;
+        if (Mode == DiffMode.SideBySide)
+        {
+            count = CurrentDiff.AlignedRows.Count;
+            if (count == 0) return;
+            JumpToChangeInRows(direction, CurrentDiff.AlignedRows, count);
+        }
+        else
+        {
+            count = CurrentDiff.InlineLines.Count;
+            if (count == 0) return;
+            JumpToChangeInLines(direction, CurrentDiff.InlineLines, count);
+        }
+    }
 
-        var list = items.ToList();
-        if (list.Count == 0) return;
-
+    private void JumpToChangeInLines(int direction, IList<DiffLine> lines, int count)
+    {
         int startIndex = _lastJumpIndex + direction;
-        if (startIndex < 0) startIndex = list.Count - 1;
-        if (startIndex >= list.Count) startIndex = 0;
+        if (startIndex < 0) startIndex = count - 1;
+        if (startIndex >= count) startIndex = 0;
 
         int i = startIndex;
         bool wrapped = false;
 
         while (true)
         {
-            if (IsChange(list[i]))
+            var line = lines[i];
+            if (line.Kind == DiffLineKind.Added || line.Kind == DiffLineKind.Removed)
             {
                 _lastJumpIndex = i;
                 ScrollRequested?.Invoke(i, Mode);
@@ -292,37 +310,37 @@ public class DiffViewModel : ViewModelBase, IDisposable
             }
 
             i += direction;
-            if (i < 0)
-            {
-                if (wrapped) break;
-                i = list.Count - 1;
-                wrapped = true;
-            }
-            else if (i >= list.Count)
-            {
-                if (wrapped) break;
-                i = 0;
-                wrapped = true;
-            }
-
+            if (i < 0) { if (wrapped) break; i = count - 1; wrapped = true; }
+            else if (i >= count) { if (wrapped) break; i = 0; wrapped = true; }
             if (i == startIndex) break;
         }
     }
 
-    private bool IsChange(object item)
+    private void JumpToChangeInRows(int direction, IList<AlignedDiffRow> rows, int count)
     {
-        if (item is AlignedDiffRow row)
+        int startIndex = _lastJumpIndex + direction;
+        if (startIndex < 0) startIndex = count - 1;
+        if (startIndex >= count) startIndex = 0;
+
+        int i = startIndex;
+        bool wrapped = false;
+
+        while (true)
         {
-            return row.OldLine.Kind == DiffLineKind.Added ||
-                   row.OldLine.Kind == DiffLineKind.Removed ||
-                   row.NewLine.Kind == DiffLineKind.Added ||
-                   row.NewLine.Kind == DiffLineKind.Removed;
+            var row = rows[i];
+            if (row.OldLine.Kind == DiffLineKind.Added || row.OldLine.Kind == DiffLineKind.Removed ||
+                row.NewLine.Kind == DiffLineKind.Added || row.NewLine.Kind == DiffLineKind.Removed)
+            {
+                _lastJumpIndex = i;
+                ScrollRequested?.Invoke(i, Mode);
+                return;
+            }
+
+            i += direction;
+            if (i < 0) { if (wrapped) break; i = count - 1; wrapped = true; }
+            else if (i >= count) { if (wrapped) break; i = 0; wrapped = true; }
+            if (i == startIndex) break;
         }
-        else if (item is DiffLine line)
-        {
-            return line.Kind == DiffLineKind.Added || line.Kind == DiffLineKind.Removed;
-        }
-        return false;
     }
 
     private async Task CopyFullDiffAsync()

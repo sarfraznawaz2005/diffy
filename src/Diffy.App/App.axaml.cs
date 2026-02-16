@@ -57,7 +57,11 @@ public partial class App : Application
                         {
                             repoPath = repoPath.Substring(0, repoPath.Length - 1).Trim();
                         }
-                        _ = vm.OpenRepositoryAsync(repoPath);
+                        _ = vm.OpenRepositoryAsync(repoPath).ContinueWith(t =>
+                        {
+                            if (t.IsFaulted)
+                                System.Diagnostics.Debug.WriteLine($"OpenRepositoryAsync from single-instance failed: {t.Exception?.InnerException?.Message}");
+                        }, TaskContinuationOptions.OnlyOnFaulted);
                     }
                     mainWindow.ActivateWindow();
                 });

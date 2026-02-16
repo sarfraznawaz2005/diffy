@@ -10,6 +10,7 @@ namespace Diffy.App.Views;
 public partial class RepositoryTabView : UserControl
 {
     private RepositoryTabViewModel? _currentVm;
+    private IDisposable? _selectedFileIndexSubscription;
 
     public RepositoryTabView()
     {
@@ -22,6 +23,10 @@ public partial class RepositoryTabView : UserControl
                 _currentVm.ScrollRequested -= OnScrollRequested;
             }
 
+            // Dispose previous subscription to prevent leaks
+            _selectedFileIndexSubscription?.Dispose();
+            _selectedFileIndexSubscription = null;
+
             _currentVm = DataContext as RepositoryTabViewModel;
 
             if (_currentVm != null)
@@ -29,7 +34,7 @@ public partial class RepositoryTabView : UserControl
                 _currentVm.ScrollRequested += OnScrollRequested;
 
                 // Ensure visual selection is applied when SelectedFileIndex changes programmatically
-                _currentVm.WhenAnyValue(x => x.SelectedFileIndex)
+                _selectedFileIndexSubscription = _currentVm.WhenAnyValue(x => x.SelectedFileIndex)
                     .Subscribe(index => EnsureFileListSelection(index));
             }
         };
@@ -66,7 +71,7 @@ public partial class RepositoryTabView : UserControl
             ? this.FindControl<ListBox>("SideBySideListBox")
             : this.FindControl<ListBox>("InlineListBox");
 
-        if (listBox != null && index >= 0 && index < listBox.Items.Cast<object>().Count())
+        if (listBox != null && index >= 0 && index < listBox.ItemCount)
         {
             // Set selected index so it's highlighted/focused
             listBox.SelectedIndex = index;

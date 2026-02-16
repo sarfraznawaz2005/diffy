@@ -31,7 +31,7 @@ public class SettingsService : ISettingsService
 
         _globalSettingsPath = Path.Combine(_settingsDir, "settings.json");
 
-        Task.Run(() => Directory.CreateDirectory(_settingsDir)).GetAwaiter().GetResult();
+        Directory.CreateDirectory(_settingsDir);
     }
 
     public FilterSettings GetFilterSettings(string repoPath)
@@ -40,11 +40,11 @@ public class SettingsService : ISettingsService
             return cached;
 
         var settingsPath = GetRepoSettingsPath(repoPath);
-        if (Task.Run(() => File.Exists(settingsPath)).GetAwaiter().GetResult())
+        if (File.Exists(settingsPath))
         {
             try
             {
-                var json = Task.Run(() => File.ReadAllText(settingsPath)).GetAwaiter().GetResult();
+                var json = File.ReadAllText(settingsPath);
                 var settings = JsonSerializer.Deserialize<FilterSettings>(json, JsonOptions);
                 if (settings != null)
                 {
@@ -67,8 +67,15 @@ public class SettingsService : ISettingsService
     {
         _filterSettingsCache[repoPath] = settings;
         var settingsPath = GetRepoSettingsPath(repoPath);
-        var json = JsonSerializer.Serialize(settings, JsonOptions);
-        Task.Run(() => File.WriteAllText(settingsPath, json)).GetAwaiter().GetResult();
+        try
+        {
+            var json = JsonSerializer.Serialize(settings, JsonOptions);
+            File.WriteAllText(settingsPath, json);
+        }
+        catch
+        {
+            // Fail silently for non-critical settings persistence
+        }
     }
 
     public DiffMode GetDiffMode()
@@ -229,11 +236,11 @@ public class SettingsService : ISettingsService
 
     private void LoadGlobalSettings()
     {
-        if (Task.Run(() => File.Exists(_globalSettingsPath)).GetAwaiter().GetResult())
+        if (File.Exists(_globalSettingsPath))
         {
             try
             {
-                var json = Task.Run(() => File.ReadAllText(_globalSettingsPath)).GetAwaiter().GetResult();
+                var json = File.ReadAllText(_globalSettingsPath);
                 _globalSettings = JsonSerializer.Deserialize<GlobalSettings>(json, JsonOptions)
                     ?? new GlobalSettings();
 
@@ -255,8 +262,15 @@ public class SettingsService : ISettingsService
 
     private void SaveGlobalSettings()
     {
-        var json = JsonSerializer.Serialize(_globalSettings, JsonOptions);
-        Task.Run(() => File.WriteAllText(_globalSettingsPath, json)).GetAwaiter().GetResult();
+        try
+        {
+            var json = JsonSerializer.Serialize(_globalSettings, JsonOptions);
+            File.WriteAllText(_globalSettingsPath, json);
+        }
+        catch
+        {
+            // Fail silently for non-critical settings persistence
+        }
     }
 
     private string GetRepoSettingsPath(string repoPath)
