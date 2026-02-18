@@ -276,6 +276,21 @@ public class GitRepositoryWrapper : IGitRepository
         });
     }
 
+    public Dictionary<string, (int Additions, int Deletions)> GetDiffStats()
+    {
+        return SafeRun(r =>
+        {
+            var tree = r.Head.Tip?.Tree;
+            var patch = r.Diff.Compare<Patch>(tree, DiffTargets.WorkingDirectory);
+            var stats = new Dictionary<string, (int, int)>();
+            foreach (var entry in patch)
+            {
+                stats[entry.Path] = (entry.LinesAdded, entry.LinesDeleted);
+            }
+            return stats;
+        }, new Dictionary<string, (int, int)>());
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

@@ -83,6 +83,12 @@ public interface IGitRepository : IDisposable
     /// Checks if a file is binary by examining the blob in HEAD or working directory.
     /// </summary>
     bool IsFileBinary(string filePath);
+
+    /// <summary>
+    /// Gets diff stats (additions/deletions) for all changed files in a single operation.
+    /// Compares HEAD tree against the working directory.
+    /// </summary>
+    Dictionary<string, (int Additions, int Deletions)> GetDiffStats();
 }
 
 /// <summary>

@@ -438,7 +438,19 @@ public class RepositoryTabViewModel : ViewModelBase, IDisposable
 
             var files = await _gitService.GetChangedFilesAsync(RepositoryPath, _repository);
 
-            var sorted = files.OrderByDescending(f => f.ModifiedTime).ToList();
+            // Get diff stats for all files in a single operation to filter out +0 -0 files
+            var diffStats = await Task.Run(() => _repository.GetDiffStats());
+
+            var sorted = files
+                .Where(f =>
+                {
+                    if (diffStats != null && diffStats.TryGetValue(f.Path, out var stats))
+                        return stats.Additions > 0 || stats.Deletions > 0;
+                    // File not in diff stats (e.g., untracked new file) — include it
+                    return true;
+                })
+                .OrderByDescending(f => f.ModifiedTime)
+                .ToList();
 
             // Update Files in-place to avoid Clear+Rebuild flickering
             SyncCollection(Files, sorted);
